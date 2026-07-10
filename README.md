@@ -14,6 +14,7 @@
 - SVG 原生日线蜡烛图、成交量、关键位/区间、entry/stop/target 标注
 - 固定持仓天数 + 固定 R 目标 + 结构止损的事件式基础回测
 - 课程资料页码引用与规则 DSL：见 [`knowledge/`](knowledge)
+- 5 个本地 PDF 资料源目录（7,226 页），包含趋势、区间与反转上下册；原文件不上传仓库
 - SQLite 零配置启动；PostgreSQL + Redis/RQ Docker 运行
 
 ## 快速启动
@@ -52,6 +53,17 @@ npm run dev
 
 默认 `SEED_DEMO_DATA=true`。首次启动会生成 6 个演示标的、约 280 个交易日和完整规则库。
 
+### 本地学习资料
+
+规则库页面会读取本机资料源目录并显示文件可用性。默认目录：
+
+```dotenv
+PRICE_ACTION_BOOK_ROOT=~/trading/0-阿布价格行为学
+PRICE_ACTION_SLIDES_PATH=~/quant trading/priceaction/price-action/resource/视频教程的 课件幻灯片.pdf
+```
+
+项目只保存 PDF 的文件名、页数、SHA-256、提取状态和规则引用，不提交或分发原始书籍。新增四本书当前标记为“已登记，待逐章提取”；现有 8 条程序化规则仍只引用已核验的课程幻灯片页码。
+
 ## IBKR 配置
 
 1. 启动 TWS 或 IB Gateway。
@@ -82,6 +94,7 @@ macOS Docker 用户需要让 TWS 接受来自 Docker 虚拟机的连接；Compos
 | 标的/数据 | `POST/GET /api/market/symbols`, `POST /api/market/data/sync-daily`, `GET /api/market/data/daily/{symbol}` |
 | 扫描 | `POST /api/scanner/jobs`, `GET /api/scanner/jobs/{id}`, `GET /api/scanner/results`, `GET /api/scanner/results/{id}` |
 | 规则 | `GET /api/price-action/rules`, `PATCH /api/price-action/rules/{id}`, `POST /api/price-action/rules/{id}/test` |
+| 资料源 | `GET /api/knowledge/sources` |
 | 回测 | `POST /api/backtests`, `GET /api/backtests/{id}` |
 
 示例：

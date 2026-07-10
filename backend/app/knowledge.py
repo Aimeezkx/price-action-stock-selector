@@ -1,3 +1,94 @@
+import os
+from pathlib import Path
+
+
+LOCAL_SOURCE_DEFINITIONS = [
+    {
+        "id": "course_slides_5414",
+        "title": "视频教程的课件幻灯片",
+        "filename": "视频教程的 课件幻灯片.pdf",
+        "category": "course",
+        "pages": 5414,
+        "size_bytes": 483056136,
+        "sha256": "dfa9e9ba404b2f0779271ac17c6bfe3e5c9cf86fcf1536b9573c0164fc8434a4",
+        "extraction_status": "rules_indexed",
+        "encryption": "AES-256; printing allowed, copying disabled",
+        "path_env": "PRICE_ACTION_SLIDES_PATH",
+        "default_path": "~/quant trading/priceaction/price-action/resource/视频教程的 课件幻灯片.pdf",
+    },
+    {
+        "id": "trading_price_action_reversals_1",
+        "title": "高级反转技术分析：价格行为交易系统之反转分析（上）",
+        "filename": "高级反转技术分析 价格行为交易系统之反转分析 上(高清).pdf",
+        "category": "reversal",
+        "pages": 417,
+        "size_bytes": 135444232,
+        "sha256": "bcdec70024a10d1e022d35c4b5976f87273ec7df3365ef41c025749a681f064a",
+        "extraction_status": "registered",
+        "encryption": "AES; printing and copying disabled",
+    },
+    {
+        "id": "trading_price_action_reversals_2",
+        "title": "高级反转技术分析：价格行为交易系统之反转分析（下）",
+        "filename": "高级反转技术分析 价格行为交易系统之反转分析 下  高清.pdf",
+        "category": "reversal",
+        "pages": 498,
+        "size_bytes": 157768387,
+        "sha256": "2d25f05712edde1382db010ebc78070b47b6aa5dba8d46b602e3af7330a14a2d",
+        "extraction_status": "registered",
+        "encryption": "none",
+    },
+    {
+        "id": "trading_price_action_ranges",
+        "title": "高级波段技术分析：价格行为交易系统之区间分析",
+        "filename": "高级波段技术分析 价格行为交易系统之区间分析(高清).pdf",
+        "category": "range",
+        "pages": 493,
+        "size_bytes": 122171290,
+        "sha256": "82162b5236a0ce7c83a505fd13d3015b25f546a385ec4bf7fb02f98baa4787de",
+        "extraction_status": "registered",
+        "encryption": "AES; printing and copying disabled",
+    },
+    {
+        "id": "trading_price_action_trends",
+        "title": "高级趋势技术分析：价格行为交易系统之趋势分析",
+        "filename": "高级趋势技术分析  价格行为交易系统之趋势分析(高清).pdf",
+        "category": "trend",
+        "pages": 404,
+        "size_bytes": 80759177,
+        "sha256": "401a66bd8ba0804ab5b3ba81d1da4811cb35021673c0cc07d8e3fc7d30247125",
+        "extraction_status": "registered",
+        "encryption": "AES; printing and copying disabled",
+    },
+]
+
+
+def local_knowledge_sources() -> list[dict]:
+    """Return local-only source metadata without redistributing the PDFs."""
+    book_root = Path(
+        os.getenv("PRICE_ACTION_BOOK_ROOT", "~/trading/0-阿布价格行为学")
+    ).expanduser()
+    sources = []
+    for definition in LOCAL_SOURCE_DEFINITIONS:
+        if path_env := definition.get("path_env"):
+            path = Path(os.getenv(path_env, definition["default_path"])).expanduser()
+        else:
+            path = book_root / definition["filename"]
+        sources.append(
+            {
+                **{
+                    key: value
+                    for key, value in definition.items()
+                    if key not in {"path_env", "default_path"}
+                },
+                "available": path.is_file(),
+                "local_path": str(path).replace(str(Path.home()), "~", 1),
+                "redistributed": False,
+            }
+        )
+    return sources
+
+
 RULE_DEFINITIONS = [
     {
         "id": "trend_continuation_pullback",

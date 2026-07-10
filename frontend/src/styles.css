@@ -115,6 +115,19 @@ tbody tr:hover { background: #102136; }
 .positive { color: var(--green) !important; }
 .negative { color: var(--red) !important; }
 .source-chip { display: flex; align-items: center; gap: 7px; padding: 9px 12px; color: #a6b7c9; background: #0d1b2b; border: 1px solid #22354a; border-radius: 9px; font-size: 11px; }
+.source-catalog { padding: 20px; }
+.source-catalog .section-heading { margin-bottom: 14px; }
+.source-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.source-card { min-width: 0; padding: 14px; border: 1px solid #1e3348; border-radius: 12px; background: #091725; }
+.source-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.source-card h3 { min-height: 48px; margin: 12px 0 6px; font-size: 13px; line-height: 1.45; }
+.source-card p { margin: 0; color: #8295aa; font-size: 10px; }
+.source-card small { display: block; min-height: 30px; margin-top: 8px; color: #637b92; font-size: 9px; line-height: 1.5; }
+.source-card code { display: block; margin-top: 9px; overflow: hidden; color: #526c84; font-family: inherit; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.source-available, .source-missing { font-size: 8px; font-weight: 800; }
+.source-available { color: var(--green); }
+.source-missing { color: var(--red); }
+.category-range { color: #9eaeff; background: #7895ff12; }
 
 .scanner-layout { display: grid; grid-template-columns: 252px minmax(0, 1fr); gap: 16px; align-items: start; }
 .filter-panel { border: 1px solid #1c2e42; border-radius: 16px; background: #0b1828; padding: 16px; }
@@ -197,6 +210,7 @@ select, input[type='number'] { width: 100%; color: var(--text); padding: 10px 11
   .signal-panel { display: grid; grid-template-columns: 1fr 1fr; }
   .signal-head { grid-column: 1 / -1; }
   .trade-plan { border-bottom: 0; border-right: 1px solid #1d2e42; }
+  .source-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 780px) {
@@ -213,6 +227,7 @@ select, input[type='number'] { width: 100%; color: var(--text); padding: 10px 11
   .scanner-layout { grid-template-columns: 1fr; }
   .filter-panel { order: 2; }
   .rule-grid { grid-template-columns: 1fr; }
+  .source-grid { grid-template-columns: 1fr 1fr; }
   .backtest-config { grid-template-columns: 1fr 1fr; }
   .backtest-config label:first-child, .backtest-config .button { grid-column: 1 / -1; }
   .page-heading { align-items: flex-start; flex-direction: column; }
@@ -227,4 +242,5 @@ select, input[type='number'] { width: 100%; color: var(--text); padding: 10px 11
   .signal-panel { display: block; }
   .trade-plan { border-right: 0; border-bottom: 1px solid #1d2e42; }
   .symbol-switcher { width: 100%; overflow-x: auto; }
+  .source-grid { grid-template-columns: 1fr; }
 }

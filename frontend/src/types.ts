@@ -30,6 +30,21 @@ export interface Rule {
   enabled: boolean
 }
 
+export interface KnowledgeSource {
+  id: string
+  title: string
+  filename: string
+  category: string
+  pages: number
+  size_bytes: number
+  sha256: string
+  extraction_status: 'rules_indexed' | 'registered'
+  encryption: string
+  available: boolean
+  local_path: string
+  redistributed: boolean
+}
+
 export interface Annotation {
   type: 'line' | 'zone'
   price?: number

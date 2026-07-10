@@ -1,0 +1,41 @@
+version: 1
+redistribution: false
+root_env: PRICE_ACTION_BOOK_ROOT
+default_root: ~/trading/0-阿布价格行为学
+sources:
+  - id: course_slides_5414
+    title: 视频教程的课件幻灯片
+    filename: 视频教程的 课件幻灯片.pdf
+    pages: 5414
+    category: course
+    extraction_status: rules_indexed
+    sha256: dfa9e9ba404b2f0779271ac17c6bfe3e5c9cf86fcf1536b9573c0164fc8434a4
+    path_env: PRICE_ACTION_SLIDES_PATH
+  - id: trading_price_action_reversals_1
+    title: 高级反转技术分析：价格行为交易系统之反转分析（上）
+    filename: 高级反转技术分析 价格行为交易系统之反转分析 上(高清).pdf
+    pages: 417
+    category: reversal
+    extraction_status: registered
+    sha256: bcdec70024a10d1e022d35c4b5976f87273ec7df3365ef41c025749a681f064a
+  - id: trading_price_action_reversals_2
+    title: 高级反转技术分析：价格行为交易系统之反转分析（下）
+    filename: 高级反转技术分析 价格行为交易系统之反转分析 下  高清.pdf
+    pages: 498
+    category: reversal
+    extraction_status: registered
+    sha256: 2d25f05712edde1382db010ebc78070b47b6aa5dba8d46b602e3af7330a14a2d
+  - id: trading_price_action_ranges
+    title: 高级波段技术分析：价格行为交易系统之区间分析
+    filename: 高级波段技术分析 价格行为交易系统之区间分析(高清).pdf
+    pages: 493
+    category: range
+    extraction_status: registered
+    sha256: 82162b5236a0ce7c83a505fd13d3015b25f546a385ec4bf7fb02f98baa4787de
+  - id: trading_price_action_trends
+    title: 高级趋势技术分析：价格行为交易系统之趋势分析
+    filename: 高级趋势技术分析  价格行为交易系统之趋势分析(高清).pdf
+    pages: 404
+    category: trend
+    extraction_status: registered
+    sha256: 401a66bd8ba0804ab5b3ba81d1da4811cb35021673c0cc07d8e3fc7d30247125

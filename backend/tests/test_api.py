@@ -18,6 +18,10 @@ def test_mvp_flow() -> None:
         assert client.get("/api/health").status_code == 200
         rules = client.get("/api/price-action/rules").json()
         assert len(rules) == 8
+        sources = client.get("/api/knowledge/sources").json()
+        assert len(sources) == 5
+        assert sum(source["pages"] for source in sources) == 7226
+        assert all(source["redistributed"] is False for source in sources)
         symbols = client.get("/api/market/symbols").json()
         assert len(symbols) >= 6
         job = client.post(

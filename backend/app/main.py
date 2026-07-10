@@ -21,6 +21,7 @@ from .models import (
     ScanResult,
     Watchlist,
 )
+from .knowledge import local_knowledge_sources
 from .price_action import analyze_rule
 from .schemas import (
     BacktestRequest,
@@ -307,6 +308,11 @@ def list_rules(db: Session = Depends(get_db)) -> list[dict]:
             select(PriceActionRule).order_by(PriceActionRule.category, PriceActionRule.name)
         ).all()
     ]
+
+
+@app.get("/api/knowledge/sources")
+def knowledge_sources() -> list[dict]:
+    return local_knowledge_sources()
 
 
 @app.get("/api/price-action/rules/{rule_id}")

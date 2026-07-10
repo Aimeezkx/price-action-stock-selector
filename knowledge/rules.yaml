@@ -1,6 +1,7 @@
 version: 1
 timeframe: 1d
 source: "resource/视频教程的 课件幻灯片.pdf (local source, not redistributed)"
+source_catalog: local_sources.yaml
 rules:
   - id: trend_continuation_pullback
     conditions: [ema20_rising, close_above_ema20, pullback_within_atr, strong_close]
