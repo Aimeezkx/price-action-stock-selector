@@ -1,0 +1,14 @@
+{
+  "projectPath": "/Users/kaixinzheng/quant trading/priceaction/price-action-stock-selector",
+  "repository": "Aimeezkx/price-action-stock-selector",
+  "baseBranch": "main",
+  "headBranch": "agent/price-action-selector-mvp",
+  "validationLedger": {
+    "backendTests": "python3 -m pytest -q: 5 passed",
+    "backendLint": "python3 -m ruff check app tests migrations: passed",
+    "frontendBuild": "npm run build: passed",
+    "productionAudit": "npm audit --omit=dev: 0 vulnerabilities",
+    "browserSmoke": "Prior UI smoke verified scanner, chart, backtest, rules, and no console errors; post-fix job isolation and non-overlap behavior are covered by regression tests",
+    "knownGap": "Docker CLI unavailable locally, so Compose was not launched; no live TWS session was used"
+  }
+}

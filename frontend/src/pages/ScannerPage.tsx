@@ -12,12 +12,20 @@ export function ScannerPage() {
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>([])
   const [selectedRules, setSelectedRules] = useState<string[]>([])
   const [minScore, setMinScore] = useState(60)
+  const [activeJobId, setActiveJobId] = useState<number | null>(null)
   const symbols = useQuery({ queryKey: ['symbols'], queryFn: () => api.get<SymbolItem[]>('/api/market/symbols') })
   const rules = useQuery({ queryKey: ['rules'], queryFn: () => api.get<Rule[]>('/api/price-action/rules') })
-  const results = useQuery({ queryKey: ['scan-results'], queryFn: () => api.get<ScanResult[]>('/api/scanner/results?min_score=0') })
+  const results = useQuery({
+    queryKey: ['scan-results', activeJobId],
+    queryFn: () => api.get<ScanResult[]>(
+      activeJobId === null
+        ? '/api/scanner/results?min_score=0'
+        : `/api/scanner/results?job_id=${activeJobId}&min_score=0`,
+    ),
+  })
   const scan = useMutation({
     mutationFn: () => api.post<ScanJob>('/api/scanner/jobs', { symbols: selectedSymbols, rule_ids: selectedRules, min_score: minScore }),
-    onSuccess: () => results.refetch(),
+    onSuccess: (job) => setActiveJobId(job.id),
   })
   const visible = useMemo(() => (results.data ?? []).filter((item) => item.score >= minScore), [results.data, minScore])
   if (symbols.isLoading || rules.isLoading || results.isLoading) return <Loading label="正在加载扫描器…" />

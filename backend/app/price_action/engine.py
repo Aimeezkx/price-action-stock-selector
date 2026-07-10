@@ -164,14 +164,17 @@ def analyze_rule(rule: dict[str, Any], rows: list[Any]) -> dict[str, Any]:
         annotations.append({"type": "line", "price": round(resistance40, 2), "label": "40 日阻力"})
 
     elif rule_id == "breakout_pullback_support":
-        breakout_candidates = bars[-16:-3]
-        breakout_level = max(item.high for item in bars[-56:-16])
+        retest_days = int(params.get("retest_days", 10))
+        candidate_start = len(bars) - (retest_days + 3)
+        breakout_candidates = bars[candidate_start:-3]
+        level_window = bars[max(0, candidate_start - 40) : candidate_start]
+        breakout_level = max(item.high for item in level_window)
         broke = any(item.close > breakout_level for item in breakout_candidates)
         held = current.low >= breakout_level - current.atr * params.get("tolerance_atr", 0.35)
         rejection = current.close_location >= 0.65 and current.lower_wick > current.body
         score = 40 * broke + 30 * held + 20 * rejection + 10 * rising_structure
         if broke:
-            explanations.append(f"最近 10 日内曾有效突破结构位 {breakout_level:.2f}")
+            explanations.append(f"最近 {retest_days} 日内曾有效突破结构位 {breakout_level:.2f}")
         if held:
             explanations.append("当前回踩仍守住突破位容差区")
         if rejection:

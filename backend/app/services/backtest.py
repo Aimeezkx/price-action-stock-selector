@@ -35,26 +35,34 @@ def run_backtest(
                 .order_by(DailyBar.bar_date)
             ).all()
         )
-        for index in range(44, len(bars) - holding_days):
+        index = 44
+        while index < len(bars) - holding_days:
             signal_date = bars[index].bar_date
             if start_date and signal_date < start_date:
+                index += 1
                 continue
             if end_date and signal_date > end_date:
-                continue
+                break
             signal = analyze_rule(rule_to_dict(rule), bars[: index + 1])
             if not signal["matched"] or signal["direction"] != "long" or signal["score"] < 60:
+                index += 1
                 continue
             risk = max(signal["entry"] - signal["stop"], 0.01)
             target = signal["entry"] + risk * target_r
             outcome_r = None
             exit_price = bars[index + holding_days].close
             exit_date = bars[index + holding_days].bar_date
-            for future in bars[index + 1 : index + holding_days + 1]:
+            exit_index = index + holding_days
+            for future_index, future in enumerate(
+                bars[index + 1 : index + holding_days + 1], start=index + 1
+            ):
                 if future.low <= signal["stop"]:
                     outcome_r, exit_price, exit_date = -1.0, signal["stop"], future.bar_date
+                    exit_index = future_index
                     break
                 if future.high >= target:
                     outcome_r, exit_price, exit_date = target_r, target, future.bar_date
+                    exit_index = future_index
                     break
             if outcome_r is None:
                 outcome_r = (exit_price - signal["entry"]) / risk
@@ -69,8 +77,8 @@ def run_backtest(
                     "r": round(outcome_r, 3),
                 }
             )
-            # Avoid overlapping positions for the same symbol.
-            # The next possible trade naturally remains at least one loop iteration away.
+            # Resume signal evaluation only after the simulated position exits.
+            index = exit_index + 1
 
     returns = [trade["r"] for trade in trades]
     equity = peak = 0.0
