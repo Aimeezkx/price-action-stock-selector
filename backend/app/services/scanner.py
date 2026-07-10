@@ -6,7 +6,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from ..models import DailyBar, MarketSymbol, PriceActionRule, ScanJob, ScanResult
-from ..price_action import analyze_rule
+from ..price_action import analyze_rule, structural_target_for_long
 from ..universe import sp500_holding_lookup
 
 
@@ -61,11 +61,15 @@ def run_scan(db: Session, job: ScanJob, target_r: float = 2.0) -> ScanJob:
                 if not signal["matched"] or signal["score"] < job.min_score:
                     continue
                 if signal["direction"] == "long":
-                    risk = max(signal["entry"] - signal["stop"], 0.01)
-                    signal["target"] = round(signal["entry"] + risk * target_r, 2)
-                    signal["risk_reward"] = round(target_r, 2)
+                    structure_target, available_rr, target_basis = structural_target_for_long(
+                        list(bars), signal["entry"], signal["stop"]
+                    )
+                    if available_rr < target_r:
+                        continue
+                    signal["target"] = structure_target
+                    signal["risk_reward"] = available_rr
                     signal["explanation"].append(
-                        f"目标按扫描器设置为 {target_r:.2f}R；更高目标不代表更高命中概率"
+                        f"{target_basis}给出 {available_rr:.2f}R 结构空间，满足最低 {target_r:.2f}R"
                     )
                 db.add(
                     ScanResult(

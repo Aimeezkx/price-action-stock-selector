@@ -13,7 +13,7 @@
 - Dashboard、Scanner、K 线分析、Rule Library、Backtest 五个页面
 - Scanner 结果按 Score、市值排名排序，Ticker 可直接跳转对应 K 线分析
 - TradingView Lightweight Charts 日线蜡烛图、EMA20、成交量、缩放/平移、悬停 OHLC、关键位和交易计划标注
-- Scanner 可在 0.5R–10R 自由设置目标；Backtest 明细可按 Score、市值排名或实际 R 排序
+- Scanner 可在 0.5R–10R 设置最低结构 R/R，按“结构目标空间 ÷ 入场止损风险”过滤候选；Backtest 明细可按 Score、市值排名或实际 R 排序
 - 固定持仓天数 + 固定 R 目标 + 结构止损的事件式基础回测
 - 全部本地资料的 PDF/印刷页码引用与规则 DSL：见 [`knowledge/`](knowledge)
 - 5 个本地 PDF 资料源目录（7,226 页），包含趋势、区间与反转上下册；原文件不上传仓库

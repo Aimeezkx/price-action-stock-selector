@@ -75,6 +75,34 @@ def enrich_bars(rows: list[Any]) -> list[Bar]:
     return bars
 
 
+def structural_target_for_long(
+    rows: list[Any], entry: float, stop: float, lookback: int = 120
+) -> tuple[float, float, str]:
+    """Return the nearest defensible upside structure and its available R multiple."""
+    bars = enrich_bars(rows)
+    risk = max(entry - stop, 0.01)
+    history = bars[-(lookback + 1) : -1]
+    swing_highs = [
+        history[index].high
+        for index in range(1, len(history) - 1)
+        if history[index].high >= history[index - 1].high
+        and history[index].high >= history[index + 1].high
+        and history[index].high > entry
+    ]
+    if swing_highs:
+        target = min(swing_highs)
+        basis = "上方最近摆动高点/阻力"
+    else:
+        range_window = history[-20:] if history else bars[-20:]
+        measured_range = max(item.high for item in range_window) - min(
+            item.low for item in range_window
+        )
+        target = entry + max(measured_range, risk)
+        basis = "突破上方无历史阻力，采用近 20 日区间测量移动"
+    available_rr = max((target - entry) / risk, 0)
+    return round(target, 2), round(available_rr, 2), basis
+
+
 def _signal(
     rule: dict[str, Any],
     bar: Bar,

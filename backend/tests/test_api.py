@@ -89,7 +89,7 @@ def test_mvp_flow() -> None:
             if item["direction"] == "long"
         )
         assert all(
-            item["risk_reward"] == 3.25
+            item["risk_reward"] >= 3.25
             for item in results
             if item["direction"] == "long"
         )
@@ -101,11 +101,11 @@ def test_scan_results_are_isolated_by_job() -> None:
     with TestClient(app) as client:
         first = client.post(
             "/api/scanner/jobs",
-            json={"symbols": ["AAPL"], "rule_ids": [], "min_score": 50},
+            json={"symbols": ["AAPL"], "rule_ids": [], "min_score": 50, "target_r": 0.25},
         ).json()
         second = client.post(
             "/api/scanner/jobs",
-            json={"symbols": ["NVDA"], "rule_ids": [], "min_score": 50},
+            json={"symbols": ["NVDA"], "rule_ids": [], "min_score": 50, "target_r": 0.25},
         ).json()
         first_results = client.get("/api/scanner/results", params={"job_id": first["id"]}).json()
         second_results = client.get("/api/scanner/results", params={"job_id": second["id"]}).json()

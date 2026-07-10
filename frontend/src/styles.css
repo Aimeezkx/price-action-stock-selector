@@ -137,6 +137,7 @@ tbody tr:hover { background: #102136; }
 .filter-title .icon-button { margin-left: auto; }
 .field-label { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: 17px; }
 .field-label strong { color: var(--green); }
+.filter-help { margin: 7px 0 0; color: #60758b; font-size: 9px; line-height: 1.5; }
 .range { width: 100%; accent-color: var(--green); margin: 7px 0 13px; }
 fieldset { border: 0; padding: 12px 0 0; margin: 0; }
 legend { color: #71859b; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 7px; }
