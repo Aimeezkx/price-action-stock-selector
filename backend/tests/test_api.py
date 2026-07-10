@@ -17,7 +17,7 @@ def test_mvp_flow() -> None:
     with TestClient(app) as client:
         assert client.get("/api/health").status_code == 200
         rules = client.get("/api/price-action/rules").json()
-        assert len(rules) == 8
+        assert len(rules) == 12
         sources = client.get("/api/knowledge/sources").json()
         assert len(sources) == 5
         assert sum(source["pages"] for source in sources) == 7226
@@ -46,8 +46,14 @@ def test_mvp_flow() -> None:
         sync_status = client.get("/api/market/data/sync-status").json()
         assert sync_status["daily_time"] == "15:00"
         assert sync_status["retention_trading_days"] == 300
+        digest_status = client.get("/api/notifications/email/status").json()
+        assert digest_status["daily_time"] == "15:30"
+        assert digest_status["recipient"] == "zkxaimee0914@gmail.com"
+        assert digest_status["configured"] is False
+        assert client.post("/api/notifications/email/send-digest").status_code == 409
         job = client.post(
-            "/api/scanner/jobs", json={"symbols": [], "rule_ids": [], "min_score": 50}
+            "/api/scanner/jobs",
+            json={"symbols": [], "rule_ids": [], "min_score": 50, "target_r": 3.25},
         )
         assert job.status_code == 201
         assert job.json()["status"] == "completed"
@@ -64,6 +70,16 @@ def test_mvp_flow() -> None:
         ]
         assert sort_keys == sorted(sort_keys)
         assert all("index_weight" in item for item in results)
+        assert all(
+            item["stop"] < item["entry"] < item["target"]
+            for item in results
+            if item["direction"] == "long"
+        )
+        assert all(
+            item["risk_reward"] == 3.25
+            for item in results
+            if item["direction"] == "long"
+        )
         bars = client.get("/api/market/data/daily/AAPL").json()["bars"]
         assert len(bars) >= 250
 
@@ -101,6 +117,7 @@ def test_backtest_positions_do_not_overlap_per_symbol() -> None:
         assert response.status_code == 201
         trades = response.json()["trades"]
         assert trades
+        assert all("market_cap_rank" in trade and "index_weight" in trade for trade in trades)
         by_symbol: dict[str, list[dict]] = {}
         for trade in trades:
             by_symbol.setdefault(trade["symbol"], []).append(trade)

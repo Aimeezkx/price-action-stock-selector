@@ -84,7 +84,9 @@ def _signal(
     explanations: list[str],
     annotations: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    risk = max(entry - stop, bar.atr * 0.25, 0.01)
+    minimum_risk = max(bar.atr * 0.25, 0.01)
+    stop = min(stop, entry - minimum_risk)
+    risk = entry - stop
     target = entry + risk * float(rule.get("parameters", {}).get("minimum_rr", 2.0))
     return {
         "matched": score >= 50,
@@ -276,6 +278,123 @@ def analyze_rule(rule: dict[str, Any], rows: list[Any]) -> dict[str, Any]:
             explanations.append("收盘改善，可能存在被困空头回补")
         stop = current.low - current.atr * 0.15
         annotations.append({"type": "line", "price": round(support, 2), "label": "假跌破支撑"})
+
+    elif rule_id == "bullish_wedge_reversal":
+        lookback = max(18, min(int(params.get("lookback", 30)), len(bars) - 1))
+        window = bars[-(lookback + 1) : -1]
+        segment_size = max(3, len(window) // 3)
+        segments = [
+            window[:segment_size],
+            window[segment_size : segment_size * 2],
+            window[segment_size * 2 :],
+        ]
+        push_lows = [min(segment, key=lambda item: item.low) for segment in segments]
+        three_pushes = push_lows[0].low > push_lows[1].low > push_lows[2].low
+        first_drop = push_lows[0].low - push_lows[1].low
+        second_drop = push_lows[1].low - push_lows[2].low
+        contracting = first_drop > 0 and second_drop <= first_drop * params.get(
+            "contraction_ratio", 0.9
+        )
+        reversal_bar = (
+            current.close > current.open
+            and current.close_location >= params.get("close_location", 0.65)
+            and current.close > previous.high
+        )
+        score = 40 * three_pushes + 25 * contracting + 25 * reversal_bar + 10 * (
+            current.volume_ratio >= 1
+        )
+        if three_pushes:
+            explanations.append("过去窗口形成三次逐步下探，满足楔形底的三推结构")
+        if contracting:
+            explanations.append("第三推幅度小于第二推，向下动能出现收缩")
+        if reversal_bar:
+            explanations.append("第三推后出现高位收盘并突破前一日高点的反转 K 线")
+        stop = min(current.low, push_lows[-1].low) - current.atr * 0.15
+        annotations.extend(
+            {
+                "type": "line",
+                "price": round(push.low, 2),
+                "label": f"楔形第{index}推",
+            }
+            for index, push in enumerate(push_lows, 1)
+        )
+
+    elif rule_id == "double_bottom_reversal":
+        lookback = max(20, min(int(params.get("lookback", 35)), len(bars) - 1))
+        separation = max(3, int(params.get("minimum_separation", 5)))
+        history = bars[-(lookback + 1) : -separation]
+        recent = bars[-separation:]
+        first_bottom = min(history, key=lambda item: item.low)
+        second_bottom = min(recent, key=lambda item: item.low)
+        tolerance = current.atr * params.get("tolerance_atr", 0.5)
+        matched_level = abs(second_bottom.low - first_bottom.low) <= tolerance
+        held = second_bottom.close >= first_bottom.low - tolerance * 0.25
+        reversal_bar = current.close > current.open and current.close_location >= 0.65
+        score = 40 * matched_level + 25 * held + 25 * reversal_bar + 10 * rising_structure
+        if matched_level:
+            explanations.append(
+                f"两次低点 {first_bottom.low:.2f}/{second_bottom.low:.2f} 位于 ATR 容差内"
+            )
+        if held:
+            explanations.append("第二次测试未有效跌破首个底部，支撑仍然有效")
+        if reversal_bar:
+            explanations.append("第二次测试后出现阳线并收在当日区间上部")
+        stop = min(first_bottom.low, second_bottom.low) - current.atr * 0.15
+        annotations.append(
+            {
+                "type": "zone",
+                "low": round(min(first_bottom.low, second_bottom.low) - tolerance, 2),
+                "high": round(max(first_bottom.low, second_bottom.low) + tolerance, 2),
+                "label": "双底支撑区",
+            }
+        )
+
+    elif rule_id == "second_entry_long":
+        lookback = max(8, min(int(params.get("lookback", 14)), len(bars) - 2))
+        window = bars[-(lookback + 1) : -1]
+        swing_lows = [
+            window[index]
+            for index in range(1, len(window) - 1)
+            if window[index].low <= window[index - 1].low
+            and window[index].low <= window[index + 1].low
+        ]
+        two_attempts = len(swing_lows) >= 2
+        trigger = current.close > previous.high and current.close_location >= 0.65
+        shallow_pullback = min(item.low for item in window[-6:]) >= current.ema20 - current.atr
+        score = 35 * rising_structure + 30 * two_attempts + 25 * trigger + 10 * shallow_pullback
+        if rising_structure:
+            explanations.append("EMA20 上行且价格保持在趋势均线附近，上升趋势仍有效")
+        if two_attempts:
+            explanations.append("回调窗口内出现至少两次向下尝试，形成 H2 二次入场背景")
+        if trigger:
+            explanations.append("当前强势收盘突破前一日高点，触发第二次向上入场")
+        stop = min(item.low for item in window[-6:]) - current.atr * 0.1
+        annotations.append(
+            {"type": "line", "price": round(previous.high, 2), "label": "H2 触发位"}
+        )
+
+    elif rule_id == "micro_channel_pullback":
+        channel_bars = max(3, min(int(params.get("channel_bars", 5)), len(bars) - 3))
+        channel = bars[-(channel_bars + 2) : -2]
+        rising_lows = all(
+            current_bar.low >= prior_bar.low
+            for prior_bar, current_bar in zip(channel, channel[1:], strict=False)
+        )
+        first_pullback = previous.low < channel[-1].low and previous.low >= (
+            current.ema20 - current.atr * params.get("pullback_atr", 0.8)
+        )
+        resumed = current.close > previous.high and current.close_location >= 0.65
+        score = 35 * rising_lows + 25 * first_pullback + 30 * resumed + 10 * rising_structure
+        if rising_lows:
+            explanations.append(f"连续 {channel_bars} 根 K 线低点不下降，形成多头微型通道")
+        if first_pullback:
+            explanations.append("通道后首次浅回调仍位于 EMA20 的 ATR 容差区")
+        if resumed:
+            explanations.append("当前高位收盘突破回调 K 线高点，趋势恢复")
+        stop = previous.low - current.atr * 0.15
+        annotations.append(
+            {"type": "line", "price": round(previous.high, 2), "label": "首次回调触发位"}
+        )
 
     elif rule_id == "high_volume_upper_wick_risk":
         body = max(current.body, current.range * 0.08)

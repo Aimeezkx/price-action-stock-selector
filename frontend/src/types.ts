@@ -103,6 +103,22 @@ export interface DashboardData {
   top_results: ScanResult[]
   ibkr: IBKRStatus
   sync: SyncStatus
+  digest: DigestStatus
+}
+
+export interface DigestStatus {
+  enabled: boolean
+  configured: boolean
+  running: boolean
+  timezone: string
+  daily_time: string
+  recipient: string
+  next_run_at: string | null
+  last_started_at: string | null
+  last_finished_at: string | null
+  last_error: string | null
+  last_job_id: number | null
+  last_candidate_count: number
 }
 
 export interface SyncStatus {
@@ -136,5 +152,5 @@ export interface BacktestRun {
     expectancy_r: number
     sharpe_like: number
   }
-  trades: Array<{ symbol: string; signal_date: string; entry_date: string; exit_date: string; entry: number; exit: number; score: number; r: number }>
+  trades: Array<{ symbol: string; signal_date: string; entry_date: string; exit_date: string; entry: number; exit: number; score: number; r: number; market_cap_rank: number | null; index_weight: number | null }>
 }

@@ -23,6 +23,19 @@ class Settings(BaseSettings):
     market_sync_minute: int = 0
     market_bar_retention: int = 300
 
+    email_digest_enabled: bool = False
+    email_digest_hour: int = 15
+    email_digest_minute: int = 30
+    email_digest_recipient: str = "zkxaimee0914@gmail.com"
+    email_digest_min_score: float = 60
+    email_digest_target_r: float = 2
+    email_smtp_host: str = "smtp.gmail.com"
+    email_smtp_port: int = 587
+    email_smtp_username: str = ""
+    email_smtp_password: str = ""
+    email_smtp_from: str = ""
+    email_smtp_starttls: bool = True
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property

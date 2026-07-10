@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { BarChart3, Play } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { ErrorState, Loading } from '../components/StateViews'
 import type { BacktestRun, Rule } from '../types'
@@ -11,7 +12,16 @@ export function BacktestPage() {
   const [holdingDays, setHoldingDays] = useState(10)
   const [entryExpiryDays, setEntryExpiryDays] = useState(3)
   const [targetR, setTargetR] = useState(2)
+  const [sortKey, setSortKey] = useState<'score' | 'market_cap_rank' | 'r'>('score')
+  const [sortDirection, setSortDirection] = useState<'desc' | 'asc'>('desc')
   const run = useMutation({ mutationFn: () => api.post<BacktestRun>('/api/backtests', { rule_id: ruleId, symbols: [], holding_days: holdingDays, entry_expiry_days: entryExpiryDays, target_r: targetR }) })
+  const sortedTrades = useMemo(() => [...(run.data?.trades ?? [])].sort((left, right) => {
+    const leftValue = sortKey === 'market_cap_rank' ? (left.market_cap_rank ?? Number.MAX_SAFE_INTEGER) : left[sortKey]
+    const rightValue = sortKey === 'market_cap_rank' ? (right.market_cap_rank ?? Number.MAX_SAFE_INTEGER) : right[sortKey]
+    const comparison = leftValue - rightValue
+    if (sortKey === 'market_cap_rank') return sortDirection === 'desc' ? comparison : -comparison
+    return sortDirection === 'asc' ? comparison : -comparison
+  }), [run.data?.trades, sortDirection, sortKey])
   if (rules.isLoading) return <Loading label="正在准备回测引擎…" />
   if (rules.error) return <ErrorState error={rules.error} />
   const metrics = run.data?.metrics
@@ -21,7 +31,7 @@ export function BacktestPage() {
     {run.error && <div className="state-card error-state"><strong>回测失败</strong><p>{run.error.message}</p></div>}
     {metrics ? <>
       <section className="metric-grid backtest-metrics"><Metric label="交易样本" value={metrics.sample_size.toString()} /><Metric label="胜率" value={`${metrics.win_rate}%`} /><Metric label="平均 R" value={metrics.average_r.toFixed(2)} /><Metric label="Profit Factor" value={metrics.profit_factor.toFixed(2)} /><Metric label="最大回撤" value={`${metrics.max_drawdown_r.toFixed(2)}R`} /><Metric label="Sharpe-like" value={metrics.sharpe_like.toFixed(2)} /></section>
-      <section className="panel"><div className="section-heading"><div><span className="eyebrow">TRADE LOG</span><h2>最近 {Math.min(run.data!.trades.length, 250)} 笔信号</h2></div><span className="muted">Run #{run.data!.id}</span></div><div className="table-scroll"><table><thead><tr><th>Symbol</th><th>Signal Date</th><th>Entry Date</th><th>Exit Date</th><th>Entry</th><th>Exit</th><th>Score</th><th>R</th></tr></thead><tbody>{run.data!.trades.slice().reverse().map((trade, index) => <tr key={`${trade.symbol}-${trade.entry_date}-${index}`}><td><strong className="ticker">{trade.symbol}</strong></td><td>{trade.signal_date}</td><td>{trade.entry_date}</td><td>{trade.exit_date}</td><td>{trade.entry.toFixed(2)}</td><td>{trade.exit.toFixed(2)}</td><td>{trade.score.toFixed(0)}</td><td><strong className={trade.r >= 0 ? 'positive' : 'negative'}>{trade.r >= 0 ? '+' : ''}{trade.r.toFixed(2)}R</strong></td></tr>)}</tbody></table></div></section>
+      <section className="panel"><div className="section-heading"><div><span className="eyebrow">TRADE LOG</span><h2>最近 {Math.min(run.data!.trades.length, 250)} 笔信号</h2></div><div className="backtest-sort"><label><span>排序</span><select value={sortKey} onChange={(event) => setSortKey(event.target.value as typeof sortKey)}><option value="score">Score</option><option value="market_cap_rank">市值排名</option><option value="r">R</option></select></label><label><span>方向</span><select value={sortDirection} onChange={(event) => setSortDirection(event.target.value as typeof sortDirection)}><option value="desc">从大到小</option><option value="asc">从小到大</option></select></label><small>Run #{run.data!.id}</small></div></div><div className="table-scroll"><table><thead><tr><th>Symbol</th><th>市值排名</th><th>Signal Date</th><th>Entry Date</th><th>Exit Date</th><th>Entry</th><th>Exit</th><th>Score</th><th>R</th></tr></thead><tbody>{sortedTrades.map((trade, index) => <tr key={`${trade.symbol}-${trade.entry_date}-${index}`}><td><Link className="ticker ticker-link" to={`/chart/${trade.symbol}`}>{trade.symbol}</Link></td><td>{trade.market_cap_rank ? `#${trade.market_cap_rank}` : '—'}<span className="subcell">{trade.index_weight != null ? `${trade.index_weight.toFixed(3)}%` : '非 Top 300'}</span></td><td>{trade.signal_date}</td><td>{trade.entry_date}</td><td>{trade.exit_date}</td><td>{trade.entry.toFixed(2)}</td><td>{trade.exit.toFixed(2)}</td><td>{trade.score.toFixed(0)}</td><td><strong className={trade.r >= 0 ? 'positive' : 'negative'}>{trade.r >= 0 ? '+' : ''}{trade.r.toFixed(2)}R</strong></td></tr>)}</tbody></table></div></section>
     </> : <section className="backtest-empty panel"><BarChart3 size={36} /><h2>选择参数并运行第一次回测</h2><p>回测将使用数据库中已同步或演示的日线数据，并输出逐笔 R 倍数结果。</p></section>}
   </div>
 }

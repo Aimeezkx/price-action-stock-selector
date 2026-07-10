@@ -54,6 +54,34 @@ rules:
       - {source_id: trading_price_action_ranges, basis: printed, pages: [89, 150], section: 第5章与第9章失败突破}
       - {source_id: trading_price_action_reversals_1, basis: printed, pages: [347], section: 第9章失败}
       - {source_id: trading_price_action_reversals_2, basis: printed, pages: [233], section: 第18章失败突破}
+  - id: bullish_wedge_reversal
+    conditions: [three_down_pushes, contracting_momentum, bullish_reversal_trigger]
+    risk: {stop: below_third_push, target: scanner_target_r}
+    source_references:
+      - {source_id: course_slides_5414, basis: pdf, pages: [3000, 5000], section: 三推楔形与反转触发}
+      - {source_id: trading_price_action_ranges, basis: printed, pages: [251, 261], section: 第18-19章楔形回调}
+      - {source_id: trading_price_action_reversals_1, basis: printed, pages: [251, 295], section: 第5-6章楔形与扩张三角形}
+  - id: double_bottom_reversal
+    conditions: [two_support_tests, atr_level_tolerance, bullish_reversal_close]
+    risk: {stop: below_double_bottom_zone, target: scanner_target_r}
+    source_references:
+      - {source_id: course_slides_5414, basis: pdf, pages: [4, 5000], section: 双底、测试与确认}
+      - {source_id: trading_price_action_ranges, basis: printed, pages: [183, 265], section: 第12章与第20章双重底}
+      - {source_id: trading_price_action_reversals_1, basis: printed, pages: [335], section: 第8章双重顶底回调}
+  - id: second_entry_long
+    conditions: [rising_trend, two_pullback_attempts, break_previous_high]
+    risk: {stop: below_recent_pullback, target: scanner_target_r}
+    source_references:
+      - {source_id: course_slides_5414, basis: pdf, pages: [500, 1500], section: 趋势回调二次入场}
+      - {source_id: trading_price_action_trends, basis: printed, pages: [159, 278], section: 第10章与第20章}
+      - {source_id: trading_price_action_ranges, basis: printed, pages: [216], section: 第17章高1至高4}
+  - id: micro_channel_pullback
+    conditions: [five_rising_lows, first_shallow_pullback, trend_resume_trigger]
+    risk: {stop: below_first_pullback, target: scanner_target_r}
+    source_references:
+      - {source_id: course_slides_5414, basis: pdf, pages: [1500, 2000], section: 强趋势与小回调}
+      - {source_id: trading_price_action_trends, basis: printed, pages: [218, 336], section: 第16章与第23章}
+      - {source_id: trading_price_action_reversals_1, basis: printed, pages: [141], section: 第2章反转动能}
   - id: high_volume_upper_wick_risk
     conditions: [long_upper_wick, high_volume, extended_from_ema_or_oversized_bar]
     effect: reduce_long_priority

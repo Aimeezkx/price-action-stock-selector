@@ -49,4 +49,7 @@ def test_all_rules_return_uniform_shape() -> None:
         "annotations",
     }
     for rule in RULE_DEFINITIONS:
-        assert set(analyze_rule(rule, bars_with_breakout())) == expected
+        signal = analyze_rule(rule, bars_with_breakout())
+        assert set(signal) == expected
+        if signal["direction"] == "long":
+            assert signal["stop"] < signal["entry"] < signal["target"]

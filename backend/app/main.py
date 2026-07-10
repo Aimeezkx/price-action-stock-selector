@@ -34,8 +34,9 @@ from .seed import seed_demo_market, seed_rules
 from .services.backtest import run_backtest
 from .services.ibkr import ibkr_service
 from .services.market_data import sync_symbol_daily
+from .services.digest_scheduler import digest_scheduler
 from .services.scheduler import market_scheduler
-from .services.scanner import rule_to_dict, run_scan
+from .services.scanner import rule_to_dict, run_scan, scan_result_sort_key
 from .universe import (
     UNIVERSE_NAME,
     load_sp500_top300,
@@ -64,9 +65,11 @@ async def lifespan(_: FastAPI):
             seed_demo_market(db)
         seed_sp500_top300(db)
     market_scheduler.start()
+    digest_scheduler.start()
     try:
         yield
     finally:
+        await digest_scheduler.stop()
         await market_scheduler.stop()
         ibkr_service.disconnect()
 
@@ -128,6 +131,7 @@ def dashboard(db: Session = Depends(get_db)) -> dict:
         "top_results": [serialize_result(item) for item in latest_results],
         "ibkr": asdict(ibkr_service.status()),
         "sync": market_scheduler.status(),
+        "digest": digest_scheduler.status(),
     }
 
 
@@ -203,6 +207,22 @@ async def trigger_scheduled_sync() -> dict:
     return {"accepted": accepted, **market_scheduler.status()}
 
 
+@app.get("/api/notifications/email/status")
+def email_digest_status() -> dict:
+    return digest_scheduler.status()
+
+
+@app.post("/api/notifications/email/send-digest", status_code=202)
+async def trigger_email_digest() -> dict:
+    if not digest_scheduler.status()["configured"]:
+        raise HTTPException(
+            409,
+            "Email SMTP is not configured. Set EMAIL_SMTP_USERNAME and EMAIL_SMTP_PASSWORD.",
+        )
+    accepted = await digest_scheduler.trigger()
+    return {"accepted": accepted, **digest_scheduler.status()}
+
+
 @app.post("/api/market/data/sync-daily")
 async def sync_daily(payload: SyncRequest, db: Session = Depends(get_db)) -> dict:
     summary: list[dict] = []
@@ -267,7 +287,7 @@ def create_scan(payload: ScanRequest, db: Session = Depends(get_db)) -> dict:
     db.add(job)
     db.commit()
     db.refresh(job)
-    run_scan(db, job)
+    run_scan(db, job, payload.target_r)
     return serialize_job(job)
 
 
@@ -437,38 +457,32 @@ def serialize_result(item: ScanResult) -> dict:
     holding = sp500_holding_lookup().get(item.symbol)
     return {
         **model_dict(
-        item,
-        [
-            "id",
-            "scan_job_id",
-            "symbol",
-            "signal_date",
-            "rule_id",
-            "rule_name",
-            "score",
-            "direction",
-            "entry",
-            "stop",
-            "target",
-            "risk_reward",
-            "explanation",
-            "annotations",
-            "created_at",
-        ],
+            item,
+            [
+                "id",
+                "scan_job_id",
+                "symbol",
+                "signal_date",
+                "rule_id",
+                "rule_name",
+                "score",
+                "direction",
+                "entry",
+                "stop",
+                "target",
+                "risk_reward",
+                "explanation",
+                "annotations",
+                "created_at",
+            ],
         ),
         "market_cap_rank": holding["rank"] if holding else None,
         "index_weight": holding["weight"] if holding else None,
     }
 
 
-def scan_result_sort_key(item: ScanResult) -> tuple[float, int, int]:
-    holding = sp500_holding_lookup().get(item.symbol)
-    market_cap_rank = holding["rank"] if holding else 10_000
-    return (-item.score, market_cap_rank, -item.id)
-
-
 def serialize_backtest(item: BacktestRun) -> dict:
-    return model_dict(
+    payload = model_dict(
         item,
         [
             "id",
@@ -482,3 +496,13 @@ def serialize_backtest(item: BacktestRun) -> dict:
             "created_at",
         ],
     )
+    payload["trades"] = [
+        {
+            **trade,
+            "market_cap_rank": holding["rank"] if holding else None,
+            "index_weight": holding["weight"] if holding else None,
+        }
+        for trade in item.trades
+        for holding in [sp500_holding_lookup().get(trade["symbol"])]
+    ]
+    return payload

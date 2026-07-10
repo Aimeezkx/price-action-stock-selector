@@ -8,16 +8,18 @@
 
 - IBKR 连接状态、只读连接、合约解析、日线历史数据、pacing delay、幂等 upsert
 - 7 张核心表：标的、日线、规则、扫描任务、扫描结果、自选列表、回测运行
-- 8 条日线规则：趋势回踩、放量突破、突破回踩、紧密区间突破、Pin Bar、Inside Bar、假跌破收回、长上影风险过滤
+- 12 条日线规则：趋势回踩、放量突破、突破回踩、紧密区间突破、Pin Bar、Inside Bar、假跌破收回、楔形底、双底、H2 二次入场、微型通道回调、长上影风险过滤
 - 统一信号输出：score、direction、entry、stop、target、R/R、中文解释、图表标注
 - Dashboard、Scanner、K 线分析、Rule Library、Backtest 五个页面
 - Scanner 结果按 Score、市值排名排序，Ticker 可直接跳转对应 K 线分析
-- SVG 原生日线蜡烛图、成交量、关键位/区间、entry/stop/target 标注
+- TradingView Lightweight Charts 日线蜡烛图、EMA20、成交量、缩放/平移、悬停 OHLC、关键位和交易计划标注
+- Scanner 可在 0.5R–10R 自由设置目标；Backtest 明细可按 Score、市值排名或实际 R 排序
 - 固定持仓天数 + 固定 R 目标 + 结构止损的事件式基础回测
 - 全部本地资料的 PDF/印刷页码引用与规则 DSL：见 [`knowledge/`](knowledge)
 - 5 个本地 PDF 资料源目录（7,226 页），包含趋势、区间与反转上下册；原文件不上传仓库
 - S&P 500 自由流通市值权重前 300 股票池，来自 State Street SPY 官方每日持仓
 - 工作日 `15:00 America/Chicago` 自动同步 IBKR 日线，每只股票只保留最近 300 个交易日
+- 可选的工作日 `15:30 America/Chicago` 前 20 候选 Gmail 邮件（默认关闭，凭据只从环境变量读取）
 - SQLite 零配置启动；PostgreSQL + Redis/RQ Docker 运行
 
 ## 快速启动
@@ -86,6 +88,12 @@ MARKET_SYNC_TIMEZONE=America/Chicago
 MARKET_SYNC_HOUR=15
 MARKET_SYNC_MINUTE=0
 MARKET_BAR_RETENTION=300
+EMAIL_DIGEST_ENABLED=true
+EMAIL_DIGEST_HOUR=15
+EMAIL_DIGEST_MINUTE=30
+EMAIL_DIGEST_RECIPIENT=zkxaimee0914@gmail.com
+EMAIL_SMTP_USERNAME=your-account@gmail.com
+EMAIL_SMTP_PASSWORD=your-gmail-app-password
 ```
 
 `IBKR_MARKET_DATA_TYPE=3` 表示延迟数据。是否能取得数据取决于账户权限和市场数据订阅。批量同步会逐 ticker 串行执行，并在请求后节流；历史数据保存在本地，避免重复请求。
@@ -93,6 +101,8 @@ MARKET_BAR_RETENTION=300
 若标的原先使用演示 K 线，第一次成功取得 IBKR 数据时会先清除该标的的全部 `DEMO` K 线，防止合成交易日与真实交易所日历混在同一序列；其他演示标的不受影响。
 
 macOS Docker 用户需要让 TWS 接受来自 Docker 虚拟机的连接；Compose 已把 `IBKR_HOST` 设置为 `host.docker.internal`。
+
+邮件调度只在 `EMAIL_DIGEST_ENABLED=true` 且 Gmail SMTP 用户名和应用专用密码都已配置时运行。不要提交 `.env`；应用专用密码应仅保存在本机或部署平台的 Secret 中。状态和手动触发接口分别为 `GET /api/notifications/email/status` 与 `POST /api/notifications/email/send-digest`。
 
 ## S&P 500 Top 300 与自动更新
 
@@ -125,6 +135,7 @@ cd backend
 | 规则 | `GET /api/price-action/rules`, `PATCH /api/price-action/rules/{id}`, `POST /api/price-action/rules/{id}/test` |
 | 资料源 | `GET /api/knowledge/sources` |
 | 回测 | `POST /api/backtests`, `GET /api/backtests/{id}` |
+| 邮件 | `GET /api/notifications/email/status`, `POST /api/notifications/email/send-digest` |
 
 示例：
 
@@ -164,7 +175,7 @@ GitHub Actions 会自动执行后端 lint/测试/迁移、前端构建与依赖�
 ```text
 backend/
   app/
-    price_action/engine.py   # 指标、结构、8 条规则与评分
+    price_action/engine.py   # 指标、结构、12 条规则与评分
     services/ibkr.py         # TWS / IB Gateway 适配器
     services/scanner.py      # 批量扫描
     services/backtest.py     # 事件式回测

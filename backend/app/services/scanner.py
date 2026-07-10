@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from ..models import DailyBar, MarketSymbol, PriceActionRule, ScanJob, ScanResult
 from ..price_action import analyze_rule
+from ..universe import sp500_holding_lookup
 
 
 def rule_to_dict(rule: PriceActionRule) -> dict:
@@ -22,7 +23,13 @@ def rule_to_dict(rule: PriceActionRule) -> dict:
     }
 
 
-def run_scan(db: Session, job: ScanJob) -> ScanJob:
+def scan_result_sort_key(item: ScanResult) -> tuple[float, int, int]:
+    holding = sp500_holding_lookup().get(item.symbol)
+    market_cap_rank = holding["rank"] if holding else 10_000
+    return (-item.score, market_cap_rank, -item.id)
+
+
+def run_scan(db: Session, job: ScanJob, target_r: float = 2.0) -> ScanJob:
     job.status = "running"
     job.started_at = datetime.now(timezone.utc)
     db.commit()
@@ -48,6 +55,13 @@ def run_scan(db: Session, job: ScanJob) -> ScanJob:
                 signal = analyze_rule(rule_to_dict(rule), list(bars))
                 if not signal["matched"] or signal["score"] < job.min_score:
                     continue
+                if signal["direction"] == "long":
+                    risk = max(signal["entry"] - signal["stop"], 0.01)
+                    signal["target"] = round(signal["entry"] + risk * target_r, 2)
+                    signal["risk_reward"] = round(target_r, 2)
+                    signal["explanation"].append(
+                        f"目标按扫描器设置为 {target_r:.2f}R；更高目标不代表更高命中概率"
+                    )
                 db.add(
                     ScanResult(
                         scan_job_id=job.id,

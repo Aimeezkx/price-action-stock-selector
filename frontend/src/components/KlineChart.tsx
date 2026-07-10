@@ -1,3 +1,15 @@
+import {
+  CandlestickSeries,
+  ColorType,
+  CrosshairMode,
+  HistogramSeries,
+  LineSeries,
+  LineStyle,
+  createChart,
+  type CandlestickData,
+  type Time,
+} from 'lightweight-charts'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Annotation, DailyBar } from '../types'
 
 interface Props {
@@ -8,60 +20,189 @@ interface Props {
   target?: number
 }
 
+interface HoverBar extends DailyBar {
+  ema20: number | null
+}
+
 export function KlineChart({ bars, annotations = [], entry, stop, target }: Props) {
-  const data = bars.slice(-90)
-  if (!data.length) return <div className="chart-empty">暂无 K 线数据</div>
-  const width = 980
-  const height = 500
-  const pad = { top: 24, right: 76, bottom: 62, left: 18 }
-  const volumeHeight = 72
-  const chartBottom = height - pad.bottom - volumeHeight
-  const low = Math.min(...data.map((item) => item.low), stop ?? Infinity) * 0.995
-  const high = Math.max(...data.map((item) => item.high), target ?? -Infinity) * 1.005
-  const range = Math.max(high - low, 0.01)
-  const maxVolume = Math.max(...data.map((item) => item.volume), 1)
-  const step = (width - pad.left - pad.right) / data.length
-  const y = (value: number) => pad.top + ((high - value) / range) * (chartBottom - pad.top)
-  const candleWidth = Math.max(2.8, step * 0.58)
-  const levels = [
-    ...(entry ? [{ price: entry, label: 'ENTRY', color: '#54d6be' }] : []),
-    ...(stop ? [{ price: stop, label: 'STOP', color: '#f16d7a' }] : []),
-    ...(target ? [{ price: target, label: 'TARGET', color: '#f2b84b' }] : []),
-    ...annotations.filter((item) => item.type === 'line' && item.price).map((item) => ({ price: item.price!, label: item.label, color: '#7895ff' })),
-  ]
-  return (
-    <div className="chart-wrap">
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="日线 K 线图">
-        <defs>
-          <linearGradient id="chartBg" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#111f31" /><stop offset="1" stopColor="#091524" /></linearGradient>
-        </defs>
-        <rect width={width} height={height} rx="14" fill="url(#chartBg)" />
-        {[0, 0.25, 0.5, 0.75, 1].map((tick) => {
-          const price = high - range * tick
-          const py = y(price)
-          return <g key={tick}><line x1={pad.left} y1={py} x2={width - pad.right} y2={py} stroke="#26364a" strokeWidth="1" /><text x={width - pad.right + 8} y={py + 4} fill="#8090a5" fontSize="11">{price.toFixed(2)}</text></g>
-        })}
-        {annotations.filter((item) => item.type === 'zone' && item.low && item.high).map((zone) => (
-          <g key={zone.label}><rect x={pad.left} y={y(zone.high!)} width={width - pad.left - pad.right} height={Math.max(3, y(zone.low!) - y(zone.high!))} fill="#7895ff" opacity="0.09" /><text x={pad.left + 8} y={y(zone.high!) - 5} fill="#9eaeff" fontSize="11">{zone.label}</text></g>
-        ))}
-        {data.map((bar, index) => {
-          const x = pad.left + step * index + step / 2
-          const bullish = bar.close >= bar.open
-          const color = bullish ? '#35c7a5' : '#e55b6b'
-          const bodyY = Math.min(y(bar.open), y(bar.close))
-          const bodyHeight = Math.max(1.5, Math.abs(y(bar.open) - y(bar.close)))
-          const vh = (bar.volume / maxVolume) * volumeHeight
-          return <g key={bar.bar_date}>
-            <line x1={x} y1={y(bar.high)} x2={x} y2={y(bar.low)} stroke={color} strokeWidth="1.1" />
-            <rect x={x - candleWidth / 2} y={bodyY} width={candleWidth} height={bodyHeight} fill={color} rx="0.6" />
-            <rect x={x - candleWidth / 2} y={height - pad.bottom - vh + volumeHeight} width={candleWidth} height={vh} fill={color} opacity="0.22" />
-            {index % 18 === 0 && <text x={x} y={height - 17} fill="#6f8197" fontSize="10" textAnchor="middle">{bar.bar_date.slice(5)}</text>}
-          </g>
-        })}
-        {levels.map((level) => level.price >= low && level.price <= high && (
-          <g key={`${level.label}-${level.price}`}><line x1={pad.left} y1={y(level.price)} x2={width - pad.right} y2={y(level.price)} stroke={level.color} strokeDasharray="6 5" opacity="0.82" /><rect x={width - pad.right + 2} y={y(level.price) - 10} width={68} height={18} rx="4" fill={level.color} /><text x={width - pad.right + 36} y={y(level.price) + 3} fill="#07111f" fontSize="9" fontWeight="700" textAnchor="middle">{level.label} {level.price.toFixed(2)}</text></g>
-        ))}
-      </svg>
+  const containerRef = useRef<HTMLDivElement>(null)
+  const ema20 = useMemo(() => calculateEma(bars, 20), [bars])
+  const [hovered, setHovered] = useState<HoverBar | null>(() => withEma(bars.at(-1), ema20.at(-1)))
+
+  useEffect(() => {
+    setHovered(withEma(bars.at(-1), ema20.at(-1)))
+  }, [bars, ema20])
+
+  useEffect(() => {
+    if (!containerRef.current || !bars.length) return
+    const chart = createChart(containerRef.current, {
+      autoSize: true,
+      height: 560,
+      layout: {
+        background: { type: ColorType.Solid, color: '#091524' },
+        textColor: '#91a3b7',
+        fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+        fontSize: 12,
+      },
+      grid: {
+        vertLines: { color: '#1a2b3e' },
+        horzLines: { color: '#203247' },
+      },
+      crosshair: {
+        mode: CrosshairMode.Normal,
+        vertLine: { color: '#7895ff88', labelBackgroundColor: '#4965b8' },
+        horzLine: { color: '#7895ff88', labelBackgroundColor: '#4965b8' },
+      },
+      rightPriceScale: {
+        borderColor: '#2a3c50',
+        scaleMargins: { top: 0.08, bottom: 0.27 },
+        minimumWidth: 76,
+      },
+      timeScale: {
+        borderColor: '#2a3c50',
+        timeVisible: false,
+        rightOffset: 5,
+        barSpacing: 7,
+        minBarSpacing: 2,
+      },
+      localization: {
+        locale: 'zh-CN',
+        priceFormatter: (price: number) => price.toFixed(price >= 1000 ? 1 : 2),
+      },
+      handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true },
+      handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
+    })
+
+    const candleSeries = chart.addSeries(CandlestickSeries, {
+      upColor: '#35c7a5',
+      downColor: '#e55b6b',
+      borderVisible: false,
+      wickUpColor: '#35c7a5',
+      wickDownColor: '#e55b6b',
+      priceLineVisible: false,
+    })
+    candleSeries.setData(bars.map((bar) => ({
+      time: bar.bar_date as Time,
+      open: bar.open,
+      high: bar.high,
+      low: bar.low,
+      close: bar.close,
+    })))
+
+    const emaSeries = chart.addSeries(LineSeries, {
+      color: '#f2b84b',
+      lineWidth: 2,
+      title: 'EMA20',
+      priceLineVisible: false,
+      lastValueVisible: true,
+      crosshairMarkerVisible: false,
+    })
+    emaSeries.setData(bars.flatMap((bar, index) => (
+      ema20[index] === null ? [] : [{ time: bar.bar_date as Time, value: ema20[index]! }]
+    )))
+
+    const volumeSeries = chart.addSeries(HistogramSeries, {
+      priceScaleId: 'volume',
+      priceFormat: { type: 'volume' },
+      priceLineVisible: false,
+      lastValueVisible: false,
+    })
+    volumeSeries.priceScale().applyOptions({
+      scaleMargins: { top: 0.8, bottom: 0 },
+    })
+    volumeSeries.setData(bars.map((bar) => ({
+      time: bar.bar_date as Time,
+      value: bar.volume,
+      color: bar.close >= bar.open ? '#35c7a536' : '#e55b6b36',
+    })))
+
+    const levels = [
+      ...(entry !== undefined ? [{ price: entry, title: 'ENTRY', color: '#54d6be' }] : []),
+      ...(stop !== undefined ? [{ price: stop, title: 'STOP', color: '#f16d7a' }] : []),
+      ...(target !== undefined ? [{ price: target, title: 'TARGET', color: '#f2b84b' }] : []),
+      ...annotations.flatMap((annotation) => {
+        if (annotation.type === 'line' && annotation.price !== undefined) {
+          return [{ price: annotation.price, title: annotation.label, color: '#7895ff' }]
+        }
+        if (annotation.type === 'zone' && annotation.low !== undefined && annotation.high !== undefined) {
+          return [
+            { price: annotation.low, title: `${annotation.label} L`, color: '#7895ff88' },
+            { price: annotation.high, title: `${annotation.label} H`, color: '#7895ff88' },
+          ]
+        }
+        return []
+      }),
+    ]
+    levels.forEach((level) => candleSeries.createPriceLine({
+      price: level.price,
+      title: level.title,
+      color: level.color,
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      axisLabelVisible: true,
+    }))
+
+    const barByDate = new Map(bars.map((bar, index) => [bar.bar_date, withEma(bar, ema20[index])]))
+    const crosshairHandler = (param: { time?: Time; seriesData: Map<unknown, unknown> }) => {
+      if (!param.time) {
+        setHovered(withEma(bars.at(-1), ema20.at(-1)))
+        return
+      }
+      const date = String(param.time)
+      const candle = param.seriesData.get(candleSeries) as CandlestickData<Time> | undefined
+      const source = barByDate.get(date)
+      if (source && candle) setHovered({ ...source, ...candle, bar_date: date })
+    }
+    chart.subscribeCrosshairMove(crosshairHandler)
+    chart.timeScale().setVisibleLogicalRange({
+      from: Math.max(0, bars.length - 120),
+      to: bars.length + 4,
+    })
+
+    return () => {
+      chart.unsubscribeCrosshairMove(crosshairHandler)
+      chart.remove()
+    }
+  }, [annotations, bars, ema20, entry, stop, target])
+
+  if (!bars.length) return <div className="chart-empty">暂无 K 线数据</div>
+  return <div className="chart-wrap">
+    <div className="chart-legend" aria-live="polite">
+      <strong>{hovered?.bar_date ?? '—'}</strong>
+      <span>O <b>{formatPrice(hovered?.open)}</b></span>
+      <span>H <b>{formatPrice(hovered?.high)}</b></span>
+      <span>L <b>{formatPrice(hovered?.low)}</b></span>
+      <span>C <b>{formatPrice(hovered?.close)}</b></span>
+      <span>EMA20 <b>{formatPrice(hovered?.ema20)}</b></span>
+      <span>Vol <b>{formatVolume(hovered?.volume)}</b></span>
     </div>
-  )
+    <div className="chart-canvas" ref={containerRef} aria-label="可缩放日线 K 线图" />
+    <p className="chart-hint">滚轮缩放 · 拖动平移 · 悬停查看 OHLC / EMA20 / 成交量</p>
+  </div>
+}
+
+function calculateEma(bars: DailyBar[], period: number): Array<number | null> {
+  if (!bars.length) return []
+  const multiplier = 2 / (period + 1)
+  let ema = bars[0].close
+  return bars.map((bar, index) => {
+    ema = index === 0 ? bar.close : (bar.close - ema) * multiplier + ema
+    return index < period - 1 ? null : ema
+  })
+}
+
+function withEma(bar: DailyBar | undefined, ema: number | null | undefined): HoverBar | null {
+  return bar ? { ...bar, ema20: ema ?? null } : null
+}
+
+function formatPrice(value: number | null | undefined) {
+  return value == null ? '—' : value.toFixed(value >= 1000 ? 1 : 2)
+}
+
+function formatVolume(value: number | undefined) {
+  if (value == null) return '—'
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(2)}B`
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`
+  return value.toFixed(0)
 }

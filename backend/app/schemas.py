@@ -22,6 +22,7 @@ class ScanRequest(BaseModel):
     symbols: list[str] = []
     rule_ids: list[str] = []
     min_score: float = Field(default=60, ge=0, le=100)
+    target_r: float = Field(default=2, ge=0.25, le=10)
 
 
 class RuleUpdate(BaseModel):
