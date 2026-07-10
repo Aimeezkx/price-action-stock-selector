@@ -22,6 +22,21 @@ def test_mvp_flow() -> None:
         assert len(sources) == 5
         assert sum(source["pages"] for source in sources) == 7226
         assert all(source["redistributed"] is False for source in sources)
+        assert all(source["extraction_status"] == "rules_indexed" for source in sources)
+        assert all(source["indexed_rules"] for source in sources)
+        assert all(source["evidence_pages"] for source in sources)
+        referenced_source_ids = {
+            reference["source_id"] for rule in rules for reference in rule["source_references"]
+        }
+        assert referenced_source_ids == {source["id"] for source in sources}
+        assert all(len(rule["source_references"]) >= 2 for rule in rules)
+        assert all(
+            reference["pages"]
+            and reference["page_basis"] in {"pdf", "printed"}
+            and reference["section"]
+            for rule in rules
+            for reference in rule["source_references"]
+        )
         symbols = client.get("/api/market/symbols").json()
         assert len(symbols) >= 300
         universe = client.get("/api/market/universe/sp500-top300").json()
@@ -38,6 +53,17 @@ def test_mvp_flow() -> None:
         assert job.json()["status"] == "completed"
         results = client.get("/api/scanner/results", params={"job_id": job.json()["id"]}).json()
         assert isinstance(results, list)
+        assert results
+        sort_keys = [
+            (
+                -item["score"],
+                item["market_cap_rank"] or 10_000,
+                -item["id"],
+            )
+            for item in results
+        ]
+        assert sort_keys == sorted(sort_keys)
+        assert all("index_weight" in item for item in results)
         bars = client.get("/api/market/data/daily/AAPL").json()["bars"]
         assert len(bars) >= 250
 

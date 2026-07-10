@@ -89,6 +89,8 @@ th { padding: 11px 16px; color: #64788f; text-align: left; font-size: 9px; text-
 td { padding: 14px 16px; border-top: 1px solid #192a3d; color: #aab8c7; white-space: nowrap; }
 tbody tr:hover { background: #102136; }
 .ticker { color: var(--text); letter-spacing: .02em; }
+.ticker-link { font-weight: 800; text-decoration: none; }
+.ticker-link:hover { color: var(--green); text-decoration: underline; text-underline-offset: 3px; }
 .subcell { display: block; color: #667a90; font-size: 9px; margin-top: 2px; }
 .score-badge { width: 33px; height: 26px; display: inline-grid; place-items: center; border-radius: 7px; font-weight: 800; font-size: 11px; }
 .score-high { color: #75e3cb; background: #35c7a51a; border: 1px solid #35c7a53d; }
@@ -195,6 +197,7 @@ legend { color: #71859b; font-size: 9px; font-weight: 800; letter-spacing: .12em
 .source-block > div { display: flex; align-items: flex-start; gap: 7px; margin-top: 9px; color: #607990; }
 .source-block p { margin: 0; color: #75899f; font-size: 10px; line-height: 1.55; }
 .source-block strong { color: #9fb0c1; font-weight: 600; }
+.source-block p span { color: #596f85; }
 
 .backtest-config { display: grid; grid-template-columns: minmax(230px, 1.5fr) repeat(3, 1fr) auto; gap: 14px; padding: 20px; align-items: end; }
 .backtest-config label span { display: block; margin-bottom: 6px; color: #71859c; font-size: 10px; font-weight: 700; }

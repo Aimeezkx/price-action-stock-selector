@@ -25,6 +25,11 @@ def seed_rules(db: Session) -> None:
     for definition in RULE_DEFINITIONS:
         existing = db.get(PriceActionRule, definition["id"])
         if existing:
+            existing.name = definition["name"]
+            existing.category = definition["category"]
+            existing.description = definition["description"]
+            existing.direction = definition["direction"]
+            existing.source_references = definition["source_references"]
             continue
         db.add(PriceActionRule(**definition))
     db.commit()

@@ -1,29 +1,63 @@
-version: 1
+version: 2
 timeframe: 1d
-source: "resource/视频教程的 课件幻灯片.pdf (local source, not redistributed)"
 source_catalog: local_sources.yaml
+page_number_policy:
+  pdf: PDF 文件页码
+  printed: 书籍目录中的印刷页码
 rules:
   - id: trend_continuation_pullback
     conditions: [ema20_rising, close_above_ema20, pullback_within_atr, strong_close]
     risk: {stop: below_signal_or_ema, target: 2R}
+    source_references:
+      - {source_id: course_slides_5414, basis: pdf, pages: [4, 500, 1500], section: 术语、跟随确认与趋势章节}
+      - {source_id: trading_price_action_trends, basis: printed, pages: [252, 269, 278, 336], section: 第18-20章与第23章}
   - id: resistance_breakout_volume
     conditions: [close_above_40d_resistance, volume_ratio_gte_1_4, close_near_high]
     risk: {stop: below_breakout_level, target: 2R}
+    source_references:
+      - {source_id: course_slides_5414, basis: pdf, pages: [4, 500], section: 突破术语与跟随确认}
+      - {source_id: trading_price_action_ranges, basis: printed, pages: [53, 60, 76, 84], section: 第1-4章突破}
+      - {source_id: trading_price_action_trends, basis: printed, pages: [75, 153], section: 第3章与第8章}
   - id: breakout_pullback_support
     conditions: [prior_breakout, retest_holds_level, rejection_close]
     risk: {stop: below_retest_zone, target: 2R}
+    source_references:
+      - {source_id: course_slides_5414, basis: pdf, pages: [500, 2000], section: 跟随确认与测量移动}
+      - {source_id: trading_price_action_ranges, basis: printed, pages: [89, 104], section: 第5-6章突破回调与测试}
+      - {source_id: trading_price_action_reversals_2, basis: printed, pages: [233], section: 第18章突破回调与失败突破}
   - id: tight_range_breakout
     conditions: [seven_day_compression, close_above_range, volume_expansion]
     risk: {stop: below_compression_range, target: 2R}
+    source_references:
+      - {source_id: course_slides_5414, basis: pdf, pages: [4, 750], section: TTR 与交易区间突破}
+      - {source_id: trading_price_action_ranges, basis: printed, pages: [304, 313, 337], section: 第21-23章交易区间}
+      - {source_id: trading_price_action_trends, basis: printed, pages: [317], section: 第22章趋势性交易区间}
   - id: pin_bar_key_level
     conditions: [lower_wick_gte_2x_body, close_in_upper_35pct, near_20d_support]
     risk: {stop: below_pin_low, target: 2R}
+    source_references:
+      - {source_id: course_slides_5414, basis: pdf, pages: [500, 5000], section: 信号 K 线与入场触发}
+      - {source_id: trading_price_action_trends, basis: printed, pages: [87, 98, 234], section: 第5-6章与第17章}
+      - {source_id: trading_price_action_reversals_1, basis: printed, pages: [141, 147], section: 第2-3章反转标志}
   - id: inside_bar_breakout
     conditions: [inside_bar, close_above_mother_high, volume_not_below_average]
     risk: {stop: below_mother_low, target: 2R}
+    source_references:
+      - {source_id: course_slides_5414, basis: pdf, pages: [750], section: 区间惯性与突破尝试}
+      - {source_id: trading_price_action_trends, basis: printed, pages: [98, 143], section: 第6-7章信号 K 线}
+      - {source_id: trading_price_action_ranges, basis: printed, pages: [313], section: 第22章窄幅交易区间}
   - id: false_breakdown_reclaim
     conditions: [low_below_20d_support, close_reclaims_support, strong_close]
     risk: {stop: below_false_break_low, target: 2R}
+    source_references:
+      - {source_id: course_slides_5414, basis: pdf, pages: [4000, 5000], section: 被困空头与高位收盘}
+      - {source_id: trading_price_action_ranges, basis: printed, pages: [89, 150], section: 第5章与第9章失败突破}
+      - {source_id: trading_price_action_reversals_1, basis: printed, pages: [347], section: 第9章失败}
+      - {source_id: trading_price_action_reversals_2, basis: printed, pages: [233], section: 第18章失败突破}
   - id: high_volume_upper_wick_risk
     conditions: [long_upper_wick, high_volume, extended_from_ema_or_oversized_bar]
     effect: reduce_long_priority
+    source_references:
+      - {source_id: course_slides_5414, basis: pdf, pages: [500, 2000], section: 大 K 线风险与测量移动阻力}
+      - {source_id: trading_price_action_trends, basis: printed, pages: [61, 153, 269], section: 第2章、第8章与第19章}
+      - {source_id: trading_price_action_reversals_1, basis: printed, pages: [187], section: 第4章高潮反转}

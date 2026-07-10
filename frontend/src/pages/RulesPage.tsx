@@ -19,7 +19,7 @@ export function RulesPage() {
       <div className="source-grid">{sources.data!.map((source) => <article className="source-card" key={source.id}>
         <div className="source-card-head"><span className={`category category-${source.category}`}>{source.category}</span><span className={source.available ? 'source-available' : 'source-missing'}>{source.available ? '本机可用' : '本机缺失'}</span></div>
         <h3>{source.title}</h3><p>{source.pages.toLocaleString()} 页 · {formatSize(source.size_bytes)}</p>
-        <small>{source.extraction_status === 'rules_indexed' ? '已规则化并关联页码' : '已登记，待逐章提取规则'}</small>
+        <small>已规则化 · {source.indexed_rules.length} 条规则 · {source.evidence_pages.length} 个页码证据</small>
         <code title={source.local_path}>{source.local_path}</code>
       </article>)}</div>
     </section>
@@ -27,7 +27,7 @@ export function RulesPage() {
       <div className="rule-card-head"><span className={`category category-${rule.category}`}>{rule.category}</span><button className="toggle-button" onClick={() => toggle.mutate({ id: rule.id, enabled: !rule.enabled })} aria-label={`${rule.enabled ? '禁用' : '启用'} ${rule.name}`}>{rule.enabled ? <ToggleRight /> : <ToggleLeft />}</button></div>
       <h2>{rule.name}</h2><p>{rule.description}</p>
       <div className="parameter-list">{Object.entries(rule.parameters).map(([key, value]) => <span key={key}><small>{key.replaceAll('_', ' ')}</small><strong>{value}</strong></span>)}</div>
-      <div className="source-block"><span className="eyebrow">SOURCE EVIDENCE</span>{rule.source_references.map((source) => <div key={`${source.pages.join('-')}-${source.concept}`}><ExternalLink size={13} /><p><strong>{source.document}</strong><br />p. {source.pages.join(', ')} · {source.concept}</p></div>)}</div>
+      <div className="source-block"><span className="eyebrow">SOURCE EVIDENCE</span>{rule.source_references.map((source) => <div key={`${source.source_id}-${source.pages.join('-')}-${source.concept}`}><ExternalLink size={13} /><p><strong>{source.document}</strong><br />{source.page_basis === 'pdf' ? 'PDF 页' : '书籍印刷页'} {source.pages.join(', ')} · {source.section}<br /><span>{source.concept}</span></p></div>)}</div>
     </article>)}</section>
   </div>
 }

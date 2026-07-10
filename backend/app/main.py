@@ -36,7 +36,12 @@ from .services.ibkr import ibkr_service
 from .services.market_data import sync_symbol_daily
 from .services.scheduler import market_scheduler
 from .services.scanner import rule_to_dict, run_scan
-from .universe import UNIVERSE_NAME, load_sp500_top300, seed_sp500_top300
+from .universe import (
+    UNIVERSE_NAME,
+    load_sp500_top300,
+    seed_sp500_top300,
+    sp500_holding_lookup,
+)
 
 
 settings = get_settings()
@@ -101,9 +106,12 @@ def dashboard(db: Session = Depends(get_db)) -> dict:
     high_score_count = (
         db.scalar(select(func.count(ScanResult.id)).where(ScanResult.score >= 80)) or 0
     )
-    latest_results = db.scalars(
-        select(ScanResult).order_by(desc(ScanResult.score), desc(ScanResult.id)).limit(6)
-    ).all()
+    latest_result_query = select(ScanResult)
+    if latest_job is not None:
+        latest_result_query = latest_result_query.where(ScanResult.scan_job_id == latest_job.id)
+    latest_results = sorted(
+        db.scalars(latest_result_query).all(), key=scan_result_sort_key
+    )[:6]
     return {
         "symbol_count": db.scalar(
             select(func.count(MarketSymbol.id)).where(MarketSymbol.enabled.is_(True))
@@ -284,14 +292,20 @@ def scan_results(
     query = select(ScanResult).where(ScanResult.score >= min_score)
     if job_id is not None:
         query = query.where(ScanResult.scan_job_id == job_id)
+    else:
+        latest_job_id = db.scalar(
+            select(ScanJob.id)
+            .where(ScanJob.status == "completed")
+            .order_by(desc(ScanJob.id))
+            .limit(1)
+        )
+        if latest_job_id is None:
+            return []
+        query = query.where(ScanResult.scan_job_id == latest_job_id)
     if symbol:
         query = query.where(ScanResult.symbol == symbol.upper())
-    return [
-        serialize_result(item)
-        for item in db.scalars(
-            query.order_by(desc(ScanResult.score), desc(ScanResult.id)).limit(500)
-        ).all()
-    ]
+    items = sorted(db.scalars(query).all(), key=scan_result_sort_key)[:500]
+    return [serialize_result(item) for item in items]
 
 
 @app.get("/api/scanner/results/{result_id}")
@@ -420,7 +434,9 @@ def serialize_job(item: ScanJob) -> dict:
 
 
 def serialize_result(item: ScanResult) -> dict:
-    return model_dict(
+    holding = sp500_holding_lookup().get(item.symbol)
+    return {
+        **model_dict(
         item,
         [
             "id",
@@ -439,7 +455,16 @@ def serialize_result(item: ScanResult) -> dict:
             "annotations",
             "created_at",
         ],
-    )
+        ),
+        "market_cap_rank": holding["rank"] if holding else None,
+        "index_weight": holding["weight"] if holding else None,
+    }
+
+
+def scan_result_sort_key(item: ScanResult) -> tuple[float, int, int]:
+    holding = sp500_holding_lookup().get(item.symbol)
+    market_cap_rank = holding["rank"] if holding else 10_000
+    return (-item.score, market_cap_rank, -item.id)
 
 
 def serialize_backtest(item: BacktestRun) -> dict:

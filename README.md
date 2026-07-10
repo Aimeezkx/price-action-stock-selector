@@ -11,9 +11,10 @@
 - 8 条日线规则：趋势回踩、放量突破、突破回踩、紧密区间突破、Pin Bar、Inside Bar、假跌破收回、长上影风险过滤
 - 统一信号输出：score、direction、entry、stop、target、R/R、中文解释、图表标注
 - Dashboard、Scanner、K 线分析、Rule Library、Backtest 五个页面
+- Scanner 结果按 Score、市值排名排序，Ticker 可直接跳转对应 K 线分析
 - SVG 原生日线蜡烛图、成交量、关键位/区间、entry/stop/target 标注
 - 固定持仓天数 + 固定 R 目标 + 结构止损的事件式基础回测
-- 课程资料页码引用与规则 DSL：见 [`knowledge/`](knowledge)
+- 全部本地资料的 PDF/印刷页码引用与规则 DSL：见 [`knowledge/`](knowledge)
 - 5 个本地 PDF 资料源目录（7,226 页），包含趋势、区间与反转上下册；原文件不上传仓库
 - S&P 500 自由流通市值权重前 300 股票池，来自 State Street SPY 官方每日持仓
 - 工作日 `15:00 America/Chicago` 自动同步 IBKR 日线，每只股票只保留最近 300 个交易日
@@ -64,7 +65,7 @@ PRICE_ACTION_BOOK_ROOT=~/trading/0-阿布价格行为学
 PRICE_ACTION_SLIDES_PATH=~/quant trading/priceaction/price-action/resource/视频教程的 课件幻灯片.pdf
 ```
 
-项目只保存 PDF 的文件名、页数、SHA-256、提取状态和规则引用，不提交或分发原始书籍。新增四本书当前标记为“已登记，待逐章提取”；现有 8 条程序化规则仍只引用已核验的课程幻灯片页码。
+项目只保存 PDF 的文件名、页数、SHA-256、提取状态和规则引用，不提交或分发原始书籍。5 个资料源均已进入规则 taxonomy：课程使用 PDF 页码，四本书使用人工核对目录后的印刷页码；规则库会显示每个资料源覆盖的规则数与证据页数。
 
 ## IBKR 配置
 

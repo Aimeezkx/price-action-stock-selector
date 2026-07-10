@@ -27,9 +27,9 @@
 ## 浏览器验收
 
 - Dashboard：显示 IBKR 在线、300 个股票、15:00 自动更新状态、规则和扫描候选。
-- Scanner：显示 300 个标的，ticker/公司搜索过滤通过，并可从 UI 发起扫描。
+- Scanner：显示 300 个标的，ticker/公司搜索过滤通过；结果按 Score、市值排序，点击 Ticker 可进入对应 K 线。
 - Chart：NVDA 显示 `300/300 日`真实 IBKR 日线、300 标的切换器及 Entry、Stop、Target、EMA/回踩区标注。
-- Rule Library：8 条规则均展示参数、课程资料文件和页码证据。
+- Rule Library：5 个资料源全部规则化，8 条规则均展示 PDF/印刷页码体系、章节和概念证据。
 - Backtest：从 UI 运行默认规则并生成 6 笔逐笔交易结果。
 - 浏览器控制台：无应用错误；React Router 未来版本提示已修复并回归。
 

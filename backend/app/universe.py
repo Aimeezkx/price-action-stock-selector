@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from functools import lru_cache
 from importlib.resources import files
 
 from sqlalchemy import select
@@ -15,6 +16,11 @@ UNIVERSE_NAME = "S&P 500 Top 300"
 def load_sp500_top300() -> dict:
     resource = files("app.data").joinpath("sp500_top300.json")
     return json.loads(resource.read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=1)
+def sp500_holding_lookup() -> dict[str, dict]:
+    return {item["symbol"]: item for item in load_sp500_top300()["symbols"]}
 
 
 def seed_sp500_top300(db: Session) -> dict:

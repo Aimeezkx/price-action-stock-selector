@@ -26,8 +26,17 @@ export interface Rule {
   description: string
   direction: string
   parameters: Record<string, number>
-  source_references: Array<{ document: string; pages: number[]; concept: string }>
+  source_references: SourceReference[]
   enabled: boolean
+}
+
+export interface SourceReference {
+  source_id: string
+  document: string
+  pages: number[]
+  page_basis: 'pdf' | 'printed'
+  section: string
+  concept: string
 }
 
 export interface KnowledgeSource {
@@ -38,11 +47,13 @@ export interface KnowledgeSource {
   pages: number
   size_bytes: number
   sha256: string
-  extraction_status: 'rules_indexed' | 'registered'
+  extraction_status: 'rules_indexed'
   encryption: string
   available: boolean
   local_path: string
   redistributed: boolean
+  indexed_rules: string[]
+  evidence_pages: number[]
 }
 
 export interface Annotation {
@@ -69,6 +80,8 @@ export interface ScanResult {
   explanation: string[]
   annotations: Annotation[]
   created_at: string
+  market_cap_rank: number | null
+  index_weight: number | null
 }
 
 export interface DailyBar {

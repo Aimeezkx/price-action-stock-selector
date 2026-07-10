@@ -28,13 +28,17 @@ export function ScannerPage() {
     mutationFn: () => api.post<ScanJob>('/api/scanner/jobs', { symbols: selectedSymbols, rule_ids: selectedRules, min_score: minScore }),
     onSuccess: (job) => setActiveJobId(job.id),
   })
-  const visible = useMemo(() => (results.data ?? []).filter((item) => item.score >= minScore), [results.data, minScore])
+  const visible = useMemo(() => [...(results.data ?? [])]
+    .filter((item) => item.score >= minScore)
+    .sort((left, right) => right.score - left.score
+      || (left.market_cap_rank ?? Number.MAX_SAFE_INTEGER) - (right.market_cap_rank ?? Number.MAX_SAFE_INTEGER)
+      || right.id - left.id), [results.data, minScore])
   const filteredSymbols = useMemo(() => (symbols.data ?? []).filter((item) => `${item.symbol} ${item.name}`.toLowerCase().includes(symbolSearch.toLowerCase())), [symbols.data, symbolSearch])
   if (symbols.isLoading || rules.isLoading || results.isLoading) return <Loading label="正在加载扫描器…" />
   if (symbols.error || rules.error || results.error) return <ErrorState error={(symbols.error ?? rules.error ?? results.error) as Error} />
   const toggle = (value: string, selected: string[], setSelected: (items: string[]) => void) => setSelected(selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value])
   return <div className="page-stack">
-    <div className="page-heading"><div><span className="eyebrow">DAILY SCANNER</span><h1>价格行为扫描器</h1><p>留空代表扫描全部启用标的或规则；结果按评分自动排序。</p></div><button className="button primary" onClick={() => scan.mutate()} disabled={scan.isPending}><Play size={17} />{scan.isPending ? '扫描中…' : '运行扫描'}</button></div>
+    <div className="page-heading"><div><span className="eyebrow">DAILY SCANNER</span><h1>价格行为扫描器</h1><p>留空代表扫描全部启用标的或规则；结果先按 Score、再按市值由大到小排序。</p></div><button className="button primary" onClick={() => scan.mutate()} disabled={scan.isPending}><Play size={17} />{scan.isPending ? '扫描中…' : '运行扫描'}</button></div>
     <section className="scanner-layout">
       <aside className="filter-panel">
         <div className="filter-title"><Filter size={17} /><strong>扫描条件</strong><button className="icon-button" onClick={() => { setSelectedSymbols([]); setSelectedRules([]); setMinScore(60) }}><RotateCcw size={15} /></button></div>
