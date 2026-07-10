@@ -3,6 +3,9 @@ from datetime import date, timedelta
 
 os.environ["DATABASE_URL"] = "sqlite:///./test_price_action.db"
 os.environ["SEED_DEMO_DATA"] = "true"
+os.environ["EMAIL_DIGEST_ENABLED"] = "false"
+os.environ["EMAIL_SMTP_USERNAME"] = ""
+os.environ["EMAIL_SMTP_PASSWORD"] = ""
 
 from fastapi.testclient import TestClient
 from sqlalchemy import delete, select

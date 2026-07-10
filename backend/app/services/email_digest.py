@@ -38,7 +38,7 @@ class EmailDigestService:
                 smtp.starttls()
             smtp.login(
                 self.settings.email_smtp_username,
-                self.settings.email_smtp_password,
+                "".join(self.settings.email_smtp_password.split()),
             )
             smtp.send_message(message)
 
