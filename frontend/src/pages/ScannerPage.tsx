@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Filter, Play, RotateCcw } from 'lucide-react'
+import { Filter, Play, RefreshCw, RotateCcw } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { api } from '../api'
 import { ResultTable } from '../components/ResultTable'
@@ -24,6 +24,9 @@ export function ScannerPage() {
         ? '/api/scanner/results?min_score=0'
         : `/api/scanner/results?job_id=${activeJobId}&min_score=0`,
     ),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   })
   const scan = useMutation({
     mutationFn: () => api.post<ScanJob>('/api/scanner/jobs', { symbols: selectedSymbols, rule_ids: selectedRules, min_score: minScore, target_r: targetR }),
@@ -35,6 +38,8 @@ export function ScannerPage() {
       || (left.market_cap_rank ?? Number.MAX_SAFE_INTEGER) - (right.market_cap_rank ?? Number.MAX_SAFE_INTEGER)
       || right.id - left.id), [results.data, minScore])
   const filteredSymbols = useMemo(() => (symbols.data ?? []).filter((item) => `${item.symbol} ${item.name}`.toLowerCase().includes(symbolSearch.toLowerCase())), [symbols.data, symbolSearch])
+  const displayedJobId = scan.data?.id ?? visible[0]?.scan_job_id
+  const latestSignalDate = visible.reduce((latest, item) => item.signal_date > latest ? item.signal_date : latest, '')
   if (symbols.isLoading || rules.isLoading || results.isLoading) return <Loading label="正在加载扫描器…" />
   if (symbols.error || rules.error || results.error) return <ErrorState error={(symbols.error ?? rules.error ?? results.error) as Error} />
   const toggle = (value: string, selected: string[], setSelected: (items: string[]) => void) => setSelected(selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value])
@@ -48,7 +53,7 @@ export function ScannerPage() {
         <fieldset><legend>股票池 · {symbols.data!.length}</legend><input className="symbol-search" value={symbolSearch} onChange={(event) => setSymbolSearch(event.target.value)} placeholder="搜索 ticker / 公司" /><div className="check-list">{filteredSymbols.map((item) => <label key={item.symbol}><input type="checkbox" checked={selectedSymbols.includes(item.symbol)} onChange={() => toggle(item.symbol, selectedSymbols, setSelectedSymbols)} /><span><strong>{item.symbol}</strong><small>{item.sector ?? item.name}</small></span></label>)}</div></fieldset>
         <fieldset><legend>规则</legend><div className="check-list">{rules.data!.filter((item) => item.enabled).map((item) => <label key={item.id}><input type="checkbox" checked={selectedRules.includes(item.id)} onChange={() => toggle(item.id, selectedRules, setSelectedRules)} /><span><strong>{item.name}</strong><small>{item.category}</small></span></label>)}</div></fieldset>
       </aside>
-      <section className="panel results-panel"><div className="section-heading"><div><span className="eyebrow">{scan.data ? `JOB #${scan.data.id} · ${scan.data.status}` : 'LATEST RESULTS'}</span><h2>{visible.length} 个候选</h2></div><span className="muted">Score ≥ {minScore}</span></div>{scan.error && <p className="inline-error">{scan.error.message}</p>}<ResultTable results={visible} /></section>
+      <section className="panel results-panel"><div className="section-heading"><div><span className="eyebrow">{displayedJobId ? `JOB #${displayedJobId}${scan.data ? ` · ${scan.data.status}` : ''}` : 'LATEST RESULTS'}</span><h2>{visible.length} 个候选</h2><small className="muted">{latestSignalDate ? `数据日期 ${latestSignalDate}` : '当前任务没有命中候选'}</small></div><div className="results-actions"><span className="muted">Score ≥ {minScore}</span><button className="icon-button" aria-label="刷新最新扫描结果" title="刷新最新扫描结果" onClick={() => results.refetch()} disabled={results.isFetching}><RefreshCw size={15} className={results.isFetching ? 'spin' : ''} /></button></div></div>{scan.error && <p className="inline-error">{scan.error.message}</p>}<ResultTable results={visible} /></section>
     </section>
   </div>
 }

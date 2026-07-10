@@ -44,6 +44,9 @@ def run_scan(db: Session, job: ScanJob, target_r: float = 2.0) -> ScanJob:
         if job.rule_ids:
             rule_query = rule_query.where(PriceActionRule.id.in_(job.rule_ids))
         rules = db.scalars(rule_query.order_by(PriceActionRule.id)).all()
+        has_ibkr_data = db.scalar(
+            select(DailyBar.id).where(DailyBar.source == "IBKR").limit(1)
+        ) is not None
 
         for symbol in symbols:
             bars = db.scalars(
@@ -51,6 +54,8 @@ def run_scan(db: Session, job: ScanJob, target_r: float = 2.0) -> ScanJob:
                 .where(DailyBar.market_symbol_id == symbol.id)
                 .order_by(DailyBar.bar_date)
             ).all()
+            if has_ibkr_data and (not bars or bars[-1].source != "IBKR"):
+                continue
             for rule in rules:
                 signal = analyze_rule(rule_to_dict(rule), list(bars))
                 if not signal["matched"] or signal["score"] < job.min_score:

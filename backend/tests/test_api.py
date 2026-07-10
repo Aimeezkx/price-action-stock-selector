@@ -1,5 +1,8 @@
 import os
 from datetime import date, timedelta
+from pathlib import Path
+
+import pytest
 
 os.environ["DATABASE_URL"] = "sqlite:///./test_price_action.db"
 os.environ["SEED_DEMO_DATA"] = "true"
@@ -10,10 +13,17 @@ os.environ["EMAIL_SMTP_PASSWORD"] = ""
 from fastapi.testclient import TestClient
 from sqlalchemy import delete, select
 
-from app.database import SessionLocal
+from app.database import SessionLocal, engine
 from app.main import app
 from app.models import DailyBar, MarketSymbol
 from app.services.ibkr import ibkr_service
+
+
+@pytest.fixture(scope="module", autouse=True)
+def fresh_test_database():
+    engine.dispose()
+    Path("test_price_action.db").unlink(missing_ok=True)
+    yield
 
 
 def test_mvp_flow() -> None:

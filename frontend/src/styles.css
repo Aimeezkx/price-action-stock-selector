@@ -217,6 +217,8 @@ select, input[type='number'] { width: 100%; color: var(--text); padding: 10px 11
 .backtest-sort label span { display: block; margin-bottom: 4px; color: #71859c; font-size: 8px; font-weight: 700; }
 .backtest-sort select { min-width: 112px; padding: 7px 8px; font-size: 10px; }
 .backtest-sort small { padding-bottom: 8px; color: var(--muted); white-space: nowrap; }
+.results-actions { display: flex; align-items: center; gap: 10px; }
+.spin { animation: spin .8s linear infinite; }
 
 @media (max-width: 1100px) {
   .metric-grid { grid-template-columns: repeat(2, 1fr); }
