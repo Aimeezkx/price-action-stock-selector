@@ -54,7 +54,10 @@ async def lifespan(_: FastAPI):
         seed_rules(db)
         if settings.seed_demo_data:
             seed_demo_market(db)
-    yield
+    try:
+        yield
+    finally:
+        ibkr_service.disconnect()
 
 
 app = FastAPI(

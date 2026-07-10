@@ -27,12 +27,22 @@ class IBKRStatus:
 class IBKRService:
     def __init__(self) -> None:
         self.settings = get_settings()
-        self.ib: Any = IB() if IB else None
+        # Create the IB client lazily inside the active ASGI event loop. Creating
+        # it at module import can bind internal futures to a different loop than
+        # Uvicorn/uvloop and makes the first HTTP connection fail.
+        self.ib: Any = None
         self._lock = asyncio.Lock()
 
     async def connect(self) -> IBKRStatus:
-        if self.ib is None:
+        if IB is None:
             return self.status("ib-insync 未安装")
+        # ib-insync 0.9.x asks the event-loop policy for a loop instead of
+        # using get_running_loop(). Python 3.13/Uvicorn can therefore hand it
+        # a stale policy loop. Register the active ASGI loop before the client
+        # opens its socket so every future belongs to the request loop.
+        asyncio.set_event_loop(asyncio.get_running_loop())
+        if self.ib is None:
+            self.ib = IB()
         if not self.ib.isConnected():
             try:
                 await self.ib.connectAsync(
@@ -59,6 +69,11 @@ class IBKRService:
             message=message
             or ("已连接" if connected else "未连接；启动 TWS/IB Gateway 后点击连接"),
         )
+
+    def disconnect(self) -> None:
+        """Close the broker socket while the owning event loop is still alive."""
+        if self.ib and self.ib.isConnected():
+            self.ib.disconnect()
 
     async def fetch_daily_bars(
         self, symbol: str, duration: str = "1 Y", use_rth: bool = True

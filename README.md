@@ -102,6 +102,19 @@ cd ../frontend
 npm run build
 ```
 
+连接已登录的 TWS 后，可执行只读验收（示例使用 Live TWS 端口；不会发送订单）：
+
+```bash
+cd backend
+IBKR_PORT=7496 IBKR_CLIENT_ID=191 IBKR_READONLY=true \
+  .venv/bin/python scripts/acceptance_ibkr.py --symbol AAPL --duration '1 M'
+
+# 另一个终端启动 API 后，验证同步幂等性、扫描、规则和回测整链路
+.venv/bin/python scripts/acceptance_api.py --symbol AAPL
+```
+
+GitHub Actions 会自动执行后端 lint/测试/迁移、前端构建与依赖审计，以及前后端容器镜像构建。
+
 ## 工程结构
 
 ```text
@@ -130,3 +143,5 @@ knowledge/
 - 扫描 API 为零配置体验会在请求内执行；`app.worker.run_scan_job` 已提供 RQ 入口，大股票池部署可改为 enqueue。
 - 演示数据是确定性合成数据，不能用于评价规则真实收益；真实研究应先通过 IBKR 同步足够长的历史数据。
 - 简化回测会等待后续日线触发入场价，再从实际入场日计算持仓期；同一日同时穿越止损和目标时采用保守的止损优先。它仍未建模滑点、手续费、拆股/分红、停牌和幸存者偏差。
+- 本次验收环境没有 Docker CLI，因此未实际启动 Compose；CI 会构建两个镜像，但生产前仍应在目标环境验证 Compose 网络、PostgreSQL、Redis/RQ 和 TWS 跨主机连接。Compose 内数据库凭据仅为公开的本地开发默认值。
+- 当前前端以生产构建和浏览器 E2E 为主，后端对核心链路有回归测试；后续仍应增加逐规则行为测试和更完整的前端自动化测试。

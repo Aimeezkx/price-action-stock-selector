@@ -22,7 +22,7 @@ export function BacktestPage() {
     {metrics ? <>
       <section className="metric-grid backtest-metrics"><Metric label="交易样本" value={metrics.sample_size.toString()} /><Metric label="胜率" value={`${metrics.win_rate}%`} /><Metric label="平均 R" value={metrics.average_r.toFixed(2)} /><Metric label="Profit Factor" value={metrics.profit_factor.toFixed(2)} /><Metric label="最大回撤" value={`${metrics.max_drawdown_r.toFixed(2)}R`} /><Metric label="Sharpe-like" value={metrics.sharpe_like.toFixed(2)} /></section>
       <section className="panel"><div className="section-heading"><div><span className="eyebrow">TRADE LOG</span><h2>最近 {Math.min(run.data!.trades.length, 250)} 笔信号</h2></div><span className="muted">Run #{run.data!.id}</span></div><div className="table-scroll"><table><thead><tr><th>Symbol</th><th>Signal Date</th><th>Entry Date</th><th>Exit Date</th><th>Entry</th><th>Exit</th><th>Score</th><th>R</th></tr></thead><tbody>{run.data!.trades.slice().reverse().map((trade, index) => <tr key={`${trade.symbol}-${trade.entry_date}-${index}`}><td><strong className="ticker">{trade.symbol}</strong></td><td>{trade.signal_date}</td><td>{trade.entry_date}</td><td>{trade.exit_date}</td><td>{trade.entry.toFixed(2)}</td><td>{trade.exit.toFixed(2)}</td><td>{trade.score.toFixed(0)}</td><td><strong className={trade.r >= 0 ? 'positive' : 'negative'}>{trade.r >= 0 ? '+' : ''}{trade.r.toFixed(2)}R</strong></td></tr>)}</tbody></table></div></section>
-    </> : <section className="backtest-empty panel"><BarChart3 size={36} /><h2>选择参数并运行第一次回测</h2><p>演示数据库包含 6 只股票约 280 个交易日，可立即验证整个流程。</p></section>}
+    </> : <section className="backtest-empty panel"><BarChart3 size={36} /><h2>选择参数并运行第一次回测</h2><p>回测将使用数据库中已同步或演示的日线数据，并输出逐笔 R 倍数结果。</p></section>}
   </div>
 }
 
