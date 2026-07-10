@@ -19,6 +19,7 @@ def run_backtest(
     start_date: date | None,
     end_date: date | None,
     holding_days: int,
+    entry_expiry_days: int,
     target_r: float,
 ) -> BacktestRun:
     query = select(MarketSymbol)
@@ -36,7 +37,7 @@ def run_backtest(
             ).all()
         )
         index = 44
-        while index < len(bars) - holding_days:
+        while index < len(bars) - 1:
             signal_date = bars[index].bar_date
             if start_date and signal_date < start_date:
                 index += 1
@@ -49,13 +50,29 @@ def run_backtest(
                 continue
             risk = max(signal["entry"] - signal["stop"], 0.01)
             target = signal["entry"] + risk * target_r
+
+            trigger_end = min(index + entry_expiry_days, len(bars) - 1)
+            entry_index = next(
+                (
+                    candidate_index
+                    for candidate_index in range(index + 1, trigger_end + 1)
+                    if bars[candidate_index].high >= signal["entry"]
+                ),
+                None,
+            )
+            if entry_index is None:
+                index += 1
+                continue
+
             outcome_r = None
-            exit_price = bars[index + holding_days].close
-            exit_date = bars[index + holding_days].bar_date
-            exit_index = index + holding_days
-            for future_index, future in enumerate(
-                bars[index + 1 : index + holding_days + 1], start=index + 1
-            ):
+            final_exit_index = min(entry_index + holding_days - 1, len(bars) - 1)
+            exit_price = bars[final_exit_index].close
+            exit_date = bars[final_exit_index].bar_date
+            exit_index = final_exit_index
+            for future_index in range(entry_index, final_exit_index + 1):
+                future = bars[future_index]
+                # Daily bars cannot reveal intrabar ordering. If both adverse and
+                # favorable levels are crossed, use the conservative stop-first rule.
                 if future.low <= signal["stop"]:
                     outcome_r, exit_price, exit_date = -1.0, signal["stop"], future.bar_date
                     exit_index = future_index
@@ -69,7 +86,8 @@ def run_backtest(
             trades.append(
                 {
                     "symbol": market_symbol.symbol,
-                    "entry_date": signal_date.isoformat(),
+                    "signal_date": signal_date.isoformat(),
+                    "entry_date": bars[entry_index].bar_date.isoformat(),
                     "exit_date": exit_date.isoformat(),
                     "entry": signal["entry"],
                     "exit": round(exit_price, 2),
@@ -105,7 +123,13 @@ def run_backtest(
         symbols=[item.symbol for item in market_symbols],
         start_date=start_date,
         end_date=end_date,
-        config={"holding_days": holding_days, "target_r": target_r, "signal_score_min": 60},
+        config={
+            "holding_days": holding_days,
+            "entry_expiry_days": entry_expiry_days,
+            "target_r": target_r,
+            "signal_score_min": 60,
+            "same_bar_priority": "stop_first",
+        },
         metrics=metrics,
         trades=trades[-250:],
     )

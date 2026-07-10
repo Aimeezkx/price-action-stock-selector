@@ -80,7 +80,7 @@ export interface BacktestRun {
   id: number
   rule_id: string
   symbols: string[]
-  config: { holding_days: number; target_r: number }
+  config: { holding_days: number; entry_expiry_days: number; target_r: number }
   metrics: {
     sample_size: number
     win_rate: number
@@ -90,5 +90,5 @@ export interface BacktestRun {
     expectancy_r: number
     sharpe_like: number
   }
-  trades: Array<{ symbol: string; entry_date: string; exit_date: string; entry: number; exit: number; score: number; r: number }>
+  trades: Array<{ symbol: string; signal_date: string; entry_date: string; exit_date: string; entry: number; exit: number; score: number; r: number }>
 }

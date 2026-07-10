@@ -62,6 +62,12 @@ def test_backtest_positions_do_not_overlap_per_symbol() -> None:
         by_symbol: dict[str, list[dict]] = {}
         for trade in trades:
             by_symbol.setdefault(trade["symbol"], []).append(trade)
+            bars = client.get(
+                f"/api/market/data/daily/{trade['symbol']}", params={"limit": 1000}
+            ).json()["bars"]
+            bar_by_date = {bar["bar_date"]: bar for bar in bars}
+            assert trade["entry_date"] > trade["signal_date"]
+            assert bar_by_date[trade["entry_date"]]["high"] >= trade["entry"]
         for symbol_trades in by_symbol.values():
             ordered = sorted(symbol_trades, key=lambda item: item["entry_date"])
             for previous, current in zip(ordered, ordered[1:], strict=False):

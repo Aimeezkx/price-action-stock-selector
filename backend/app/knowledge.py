@@ -5,7 +5,7 @@ RULE_DEFINITIONS = [
         "category": "trend",
         "description": "上升结构中回踩均线/前突破位后，以强势收盘确认趋势延续。",
         "direction": "long",
-        "parameters": {"ema_period": 20, "pullback_atr": 0.8, "minimum_rr": 1.8},
+        "parameters": {"pullback_atr": 0.8, "minimum_rr": 1.8},
         "source_references": [
             {
                 "document": "视频教程的 课件幻灯片.pdf",

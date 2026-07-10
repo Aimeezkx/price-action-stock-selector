@@ -180,7 +180,7 @@ legend { color: #71859b; font-size: 9px; font-weight: 800; letter-spacing: .12em
 .source-block p { margin: 0; color: #75899f; font-size: 10px; line-height: 1.55; }
 .source-block strong { color: #9fb0c1; font-weight: 600; }
 
-.backtest-config { display: grid; grid-template-columns: minmax(230px, 1.5fr) 1fr 1fr auto; gap: 14px; padding: 20px; align-items: end; }
+.backtest-config { display: grid; grid-template-columns: minmax(230px, 1.5fr) repeat(3, 1fr) auto; gap: 14px; padding: 20px; align-items: end; }
 .backtest-config label span { display: block; margin-bottom: 6px; color: #71859c; font-size: 10px; font-weight: 700; }
 select, input[type='number'] { width: 100%; color: var(--text); padding: 10px 11px; border: 1px solid #294057; border-radius: 8px; background: #081521; }
 .backtest-metrics { grid-template-columns: repeat(6, minmax(0, 1fr)); }

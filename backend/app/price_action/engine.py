@@ -123,10 +123,6 @@ def analyze_rule(rule: dict[str, Any], rows: list[Any]) -> dict[str, Any]:
     entry = current.high + max(current.atr * 0.05, 0.01)
     stop = current.low - max(current.atr * 0.1, 0.01)
 
-    prior20 = bars[-21:-1]
-    prior40 = bars[-41:-1]
-    support20 = min(item.low for item in prior20)
-    resistance40 = max(item.high for item in prior40)
     rising_structure = current.ema20 > bars[-11].ema20 and current.close > current.ema20
 
     if rule_id == "trend_continuation_pullback":
@@ -150,24 +146,33 @@ def analyze_rule(rule: dict[str, Any], rows: list[Any]) -> dict[str, Any]:
         )
 
     elif rule_id == "resistance_breakout_volume":
-        breakout = current.close > resistance40
+        lookback = max(2, min(int(params.get("lookback", 40)), len(bars) - 1))
+        resistance = max(item.high for item in bars[-(lookback + 1) : -1])
+        breakout = current.close > resistance
         volume_ok = current.volume_ratio >= params.get("volume_ratio", 1.4)
         strong_close = current.close_location >= 0.7
         score = 45 * breakout + 30 * volume_ok + 15 * strong_close + 10 * rising_structure
         if breakout:
-            explanations.append(f"收盘突破过去 40 日阻力 {resistance40:.2f}")
+            explanations.append(f"收盘突破过去 {lookback} 日阻力 {resistance:.2f}")
         if volume_ok:
             explanations.append(f"成交量为 20 日均量的 {current.volume_ratio:.2f} 倍")
         if strong_close:
             explanations.append("突破 K 线接近最高位收盘，跟随质量较高")
-        stop = max(resistance40 - current.atr * 0.35, current.low - current.atr * 0.1)
-        annotations.append({"type": "line", "price": round(resistance40, 2), "label": "40 日阻力"})
+        stop = max(resistance - current.atr * 0.35, current.low - current.atr * 0.1)
+        annotations.append(
+            {
+                "type": "line",
+                "price": round(resistance, 2),
+                "label": f"{lookback} 日阻力",
+            }
+        )
 
     elif rule_id == "breakout_pullback_support":
-        retest_days = int(params.get("retest_days", 10))
+        retest_days = max(1, min(int(params.get("retest_days", 10)), len(bars) - 4))
+        lookback = max(2, min(int(params.get("lookback", 40)), len(bars) - 1))
         candidate_start = len(bars) - (retest_days + 3)
         breakout_candidates = bars[candidate_start:-3]
-        level_window = bars[max(0, candidate_start - 40) : candidate_start]
+        level_window = bars[max(0, candidate_start - lookback) : candidate_start]
         breakout_level = max(item.high for item in level_window)
         broke = any(item.close > breakout_level for item in breakout_candidates)
         held = current.low >= breakout_level - current.atr * params.get("tolerance_atr", 0.35)
@@ -208,21 +213,29 @@ def analyze_rule(rule: dict[str, Any], rows: list[Any]) -> dict[str, Any]:
         )
 
     elif rule_id == "pin_bar_key_level":
+        lookback = max(2, min(int(params.get("lookback", 20)), len(bars) - 1))
+        support = min(item.low for item in bars[-(lookback + 1) : -1])
         body = max(current.body, current.range * 0.08)
         pin = current.lower_wick / body >= params.get(
             "wick_body_ratio", 2
         ) and current.close_location >= params.get("close_location", 0.65)
-        near_support = current.low <= support20 + current.atr * 0.3
+        near_support = current.low <= support + current.atr * 0.3
         follow = current.close > previous.close
         score = 45 * pin + 30 * near_support + 15 * follow + 10 * (current.volume_ratio >= 1)
         if pin:
             explanations.append("长下影超过实体两倍且收在 K 线高位，形成拒绝形态")
         if near_support:
-            explanations.append(f"拒绝发生在 20 日关键支撑 {support20:.2f} 附近")
+            explanations.append(f"拒绝发生在 {lookback} 日关键支撑 {support:.2f} 附近")
         if follow:
             explanations.append("收盘高于前一日，具备初步跟随确认")
         stop = current.low - current.atr * 0.15
-        annotations.append({"type": "line", "price": round(support20, 2), "label": "20 日支撑"})
+        annotations.append(
+            {
+                "type": "line",
+                "price": round(support, 2),
+                "label": f"{lookback} 日支撑",
+            }
+        )
 
     elif rule_id == "inside_bar_breakout":
         mother = bars[-3]
@@ -247,20 +260,22 @@ def analyze_rule(rule: dict[str, Any], rows: list[Any]) -> dict[str, Any]:
         )
 
     elif rule_id == "false_breakdown_reclaim":
-        broke_support = current.low < support20
-        reclaimed = current.close > support20 and current.close_location >= params.get(
+        lookback = max(2, min(int(params.get("lookback", 20)), len(bars) - 1))
+        support = min(item.low for item in bars[-(lookback + 1) : -1])
+        broke_support = current.low < support
+        reclaimed = current.close > support and current.close_location >= params.get(
             "close_location", 0.6
         )
         follow = current.close > previous.close
         score = 45 * broke_support + 35 * reclaimed + 10 * follow + 10 * (current.volume_ratio >= 1)
         if broke_support:
-            explanations.append(f"盘中跌破过去 20 日支撑 {support20:.2f}")
+            explanations.append(f"盘中跌破过去 {lookback} 日支撑 {support:.2f}")
         if reclaimed:
             explanations.append("收盘重新站回支撑上方，空头突破失败")
         if follow:
             explanations.append("收盘改善，可能存在被困空头回补")
         stop = current.low - current.atr * 0.15
-        annotations.append({"type": "line", "price": round(support20, 2), "label": "假跌破支撑"})
+        annotations.append({"type": "line", "price": round(support, 2), "label": "假跌破支撑"})
 
     elif rule_id == "high_volume_upper_wick_risk":
         body = max(current.body, current.range * 0.08)

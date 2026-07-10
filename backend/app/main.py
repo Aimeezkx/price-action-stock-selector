@@ -344,6 +344,7 @@ def create_backtest(payload: BacktestRequest, db: Session = Depends(get_db)) -> 
         payload.start_date,
         payload.end_date,
         payload.holding_days,
+        payload.entry_expiry_days,
         payload.target_r,
     )
     return serialize_backtest(run)

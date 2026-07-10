@@ -39,4 +39,5 @@ class BacktestRequest(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     holding_days: int = Field(default=10, ge=1, le=120)
+    entry_expiry_days: int = Field(default=3, ge=1, le=10)
     target_r: float = Field(default=2, ge=0.25, le=10)
