@@ -7,7 +7,7 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import desc, func, select
+from sqlalchemy import delete, desc, func, select
 from sqlalchemy.orm import Session
 
 from .config import get_settings
@@ -166,6 +166,15 @@ async def sync_daily(payload: SyncRequest, db: Session = Depends(get_db)) -> dic
                 ticker, payload.duration, payload.use_rth
             )
             symbol.ibkr_contract_id = contract_id
+            # Demo bars can include synthetic dates that never occur in the
+            # exchange calendar, so an upsert alone would leave a mixed series.
+            # Once real bars arrive, replace the demo series for this symbol.
+            removed_demo = db.execute(
+                delete(DailyBar).where(
+                    DailyBar.market_symbol_id == symbol.id,
+                    DailyBar.source == "DEMO",
+                )
+            ).rowcount
             inserted = 0
             for bar in bars:
                 existing = db.scalar(
@@ -190,7 +199,13 @@ async def sync_daily(payload: SyncRequest, db: Session = Depends(get_db)) -> dic
             symbol.last_synced_at = datetime.now(timezone.utc)
             db.commit()
             summary.append(
-                {"symbol": ticker, "status": "ok", "received": len(bars), "inserted": inserted}
+                {
+                    "symbol": ticker,
+                    "status": "ok",
+                    "received": len(bars),
+                    "inserted": inserted,
+                    "removed_demo": removed_demo,
+                }
             )
         except Exception as exc:
             db.rollback()

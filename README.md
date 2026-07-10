@@ -70,6 +70,8 @@ IBKR_REQUEST_DELAY_SECONDS=0.35
 
 `IBKR_MARKET_DATA_TYPE=3` 表示延迟数据。是否能取得数据取决于账户权限和市场数据订阅。批量同步会逐 ticker 串行执行，并在请求后节流；历史数据保存在本地，避免重复请求。
 
+若标的原先使用演示 K 线，第一次成功取得 IBKR 数据时会先清除该标的的全部 `DEMO` K 线，防止合成交易日与真实交易所日历混在同一序列；其他演示标的不受影响。
+
 macOS Docker 用户需要让 TWS 接受来自 Docker 虚拟机的连接；Compose 已把 `IBKR_HOST` 设置为 `host.docker.internal`。
 
 ## API

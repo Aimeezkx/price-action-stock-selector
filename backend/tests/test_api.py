@@ -1,11 +1,16 @@
 import os
+from datetime import date
 
 os.environ["DATABASE_URL"] = "sqlite:///./test_price_action.db"
 os.environ["SEED_DEMO_DATA"] = "true"
 
 from fastapi.testclient import TestClient
+from sqlalchemy import delete, select
 
+from app.database import SessionLocal
 from app.main import app
+from app.models import DailyBar, MarketSymbol
+from app.services.ibkr import ibkr_service
 
 
 def test_mvp_flow() -> None:
@@ -72,3 +77,73 @@ def test_backtest_positions_do_not_overlap_per_symbol() -> None:
             ordered = sorted(symbol_trades, key=lambda item: item["entry_date"])
             for previous, current in zip(ordered, ordered[1:], strict=False):
                 assert current["entry_date"] > previous["exit_date"]
+
+
+def test_real_sync_replaces_demo_series(monkeypatch) -> None:
+    ticker = "MIXD"
+    with SessionLocal() as db:
+        symbol = db.scalar(select(MarketSymbol).where(MarketSymbol.symbol == ticker))
+        if symbol is None:
+            symbol = MarketSymbol(symbol=ticker, name="Mixed data fixture")
+            db.add(symbol)
+            db.flush()
+        db.execute(delete(DailyBar).where(DailyBar.market_symbol_id == symbol.id))
+        db.add_all(
+            [
+                DailyBar(
+                    market_symbol_id=symbol.id,
+                    bar_date=date(2026, 1, 1),
+                    open=10,
+                    high=11,
+                    low=9,
+                    close=10.5,
+                    volume=100,
+                    source="DEMO",
+                ),
+                DailyBar(
+                    market_symbol_id=symbol.id,
+                    bar_date=date(2026, 1, 2),
+                    open=10.5,
+                    high=12,
+                    low=10,
+                    close=11.5,
+                    volume=120,
+                    source="DEMO",
+                ),
+            ]
+        )
+        db.commit()
+
+    async def fake_fetch(*_args, **_kwargs):
+        return 12345, [
+            {
+                "date": date(2026, 1, 2),
+                "open": 20,
+                "high": 22,
+                "low": 19,
+                "close": 21,
+                "volume": 1_000,
+            },
+            {
+                "date": date(2026, 1, 5),
+                "open": 21,
+                "high": 23,
+                "low": 20,
+                "close": 22,
+                "volume": 1_100,
+            },
+        ]
+
+    monkeypatch.setattr(ibkr_service, "fetch_daily_bars", fake_fetch)
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/market/data/sync-daily",
+            json={"symbols": [ticker], "duration": "1 Y", "use_rth": True},
+        )
+        assert response.status_code == 200
+        result = response.json()["results"][0]
+        assert result["removed_demo"] == 2
+        assert result["inserted"] == 2
+        bars = client.get(f"/api/market/data/daily/{ticker}").json()["bars"]
+        assert [bar["bar_date"] for bar in bars] == ["2026-01-02", "2026-01-05"]
+        assert {bar["source"] for bar in bars} == {"IBKR"}
