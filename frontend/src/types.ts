@@ -89,6 +89,24 @@ export interface DashboardData {
   latest_job: { id: number; status: string; completed_at: string | null } | null
   top_results: ScanResult[]
   ibkr: IBKRStatus
+  sync: SyncStatus
+}
+
+export interface SyncStatus {
+  enabled: boolean
+  running: boolean
+  timezone: string
+  daily_time: string
+  weekdays_only: boolean
+  retention_trading_days: number
+  next_run_at: string | null
+  last_started_at: string | null
+  last_finished_at: string | null
+  last_error: string | null
+  processed: number
+  total: number
+  succeeded: number
+  failed: number
 }
 
 export interface BacktestRun {

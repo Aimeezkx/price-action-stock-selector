@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from dataclasses import asdict
-from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import delete, desc, func, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
 from .config import get_settings
@@ -34,7 +33,10 @@ from .schemas import (
 from .seed import seed_demo_market, seed_rules
 from .services.backtest import run_backtest
 from .services.ibkr import ibkr_service
+from .services.market_data import sync_symbol_daily
+from .services.scheduler import market_scheduler
 from .services.scanner import rule_to_dict, run_scan
+from .universe import UNIVERSE_NAME, load_sp500_top300, seed_sp500_top300
 
 
 settings = get_settings()
@@ -55,9 +57,12 @@ async def lifespan(_: FastAPI):
         seed_rules(db)
         if settings.seed_demo_data:
             seed_demo_market(db)
+        seed_sp500_top300(db)
+    market_scheduler.start()
     try:
         yield
     finally:
+        await market_scheduler.stop()
         ibkr_service.disconnect()
 
 
@@ -100,7 +105,9 @@ def dashboard(db: Session = Depends(get_db)) -> dict:
         select(ScanResult).order_by(desc(ScanResult.score), desc(ScanResult.id)).limit(6)
     ).all()
     return {
-        "symbol_count": db.scalar(select(func.count(MarketSymbol.id))) or 0,
+        "symbol_count": db.scalar(
+            select(func.count(MarketSymbol.id)).where(MarketSymbol.enabled.is_(True))
+        ) or 0,
         "active_rule_count": db.scalar(
             select(func.count(PriceActionRule.id)).where(PriceActionRule.enabled.is_(True))
         )
@@ -112,6 +119,7 @@ def dashboard(db: Session = Depends(get_db)) -> dict:
         else None,
         "top_results": [serialize_result(item) for item in latest_results],
         "ibkr": asdict(ibkr_service.status()),
+        "sync": market_scheduler.status(),
     }
 
 
@@ -148,8 +156,43 @@ def add_symbol(payload: SymbolCreate, db: Session = Depends(get_db)) -> dict:
 def list_symbols(db: Session = Depends(get_db)) -> list[dict]:
     return [
         serialize_symbol(item)
-        for item in db.scalars(select(MarketSymbol).order_by(MarketSymbol.symbol)).all()
+        for item in db.scalars(
+            select(MarketSymbol)
+            .where(MarketSymbol.enabled.is_(True))
+            .order_by(MarketSymbol.symbol)
+        ).all()
     ]
+
+
+@app.get("/api/market/universe/sp500-top300")
+def sp500_top300_universe(db: Session = Depends(get_db)) -> dict:
+    payload = load_sp500_top300()
+    symbols = [item["symbol"] for item in payload["symbols"]]
+    registered = db.scalar(
+        select(func.count(MarketSymbol.id)).where(MarketSymbol.symbol.in_(symbols))
+    ) or 0
+    with_data = db.scalar(
+        select(func.count(func.distinct(DailyBar.market_symbol_id)))
+        .join(MarketSymbol, DailyBar.market_symbol_id == MarketSymbol.id)
+        .where(MarketSymbol.symbol.in_(symbols))
+    ) or 0
+    return {
+        **payload,
+        "registered_count": registered,
+        "with_data_count": with_data,
+        "watchlist": UNIVERSE_NAME,
+    }
+
+
+@app.get("/api/market/data/sync-status")
+def scheduled_sync_status() -> dict:
+    return market_scheduler.status()
+
+
+@app.post("/api/market/data/sync-scheduled", status_code=202)
+async def trigger_scheduled_sync() -> dict:
+    accepted = await market_scheduler.trigger()
+    return {"accepted": accepted, **market_scheduler.status()}
 
 
 @app.post("/api/market/data/sync-daily")
@@ -157,56 +200,15 @@ async def sync_daily(payload: SyncRequest, db: Session = Depends(get_db)) -> dic
     summary: list[dict] = []
     for raw_symbol in payload.symbols:
         ticker = raw_symbol.strip().upper()
-        symbol = db.scalar(select(MarketSymbol).where(MarketSymbol.symbol == ticker))
-        if not symbol:
-            symbol = MarketSymbol(symbol=ticker, name=ticker)
-            db.add(symbol)
-            db.flush()
         try:
-            contract_id, bars = await ibkr_service.fetch_daily_bars(
-                ticker, payload.duration, payload.use_rth
-            )
-            symbol.ibkr_contract_id = contract_id
-            # Demo bars can include synthetic dates that never occur in the
-            # exchange calendar, so an upsert alone would leave a mixed series.
-            # Once real bars arrive, replace the demo series for this symbol.
-            removed_demo = db.execute(
-                delete(DailyBar).where(
-                    DailyBar.market_symbol_id == symbol.id,
-                    DailyBar.source == "DEMO",
-                )
-            ).rowcount
-            inserted = 0
-            for bar in bars:
-                existing = db.scalar(
-                    select(DailyBar).where(
-                        DailyBar.market_symbol_id == symbol.id, DailyBar.bar_date == bar["date"]
-                    )
-                )
-                if existing:
-                    for field in ("open", "high", "low", "close", "volume"):
-                        setattr(existing, field, bar[field])
-                    existing.source = "IBKR"
-                else:
-                    db.add(
-                        DailyBar(
-                            market_symbol_id=symbol.id,
-                            bar_date=bar["date"],
-                            source="IBKR",
-                            **{key: bar[key] for key in ("open", "high", "low", "close", "volume")},
-                        )
-                    )
-                    inserted += 1
-            symbol.last_synced_at = datetime.now(timezone.utc)
-            db.commit()
             summary.append(
-                {
-                    "symbol": ticker,
-                    "status": "ok",
-                    "received": len(bars),
-                    "inserted": inserted,
-                    "removed_demo": removed_demo,
-                }
+                await sync_symbol_daily(
+                    db,
+                    ticker,
+                    payload.duration,
+                    payload.use_rth,
+                    settings.market_bar_retention,
+                )
             )
         except Exception as exc:
             db.rollback()
@@ -216,7 +218,7 @@ async def sync_daily(payload: SyncRequest, db: Session = Depends(get_db)) -> dic
 
 @app.get("/api/market/data/daily/{symbol}")
 def daily_bars(
-    symbol: str, limit: int = Query(default=260, ge=45, le=2000), db: Session = Depends(get_db)
+    symbol: str, limit: int = Query(default=300, ge=45, le=2000), db: Session = Depends(get_db)
 ) -> dict:
     market_symbol = db.scalar(select(MarketSymbol).where(MarketSymbol.symbol == symbol.upper()))
     if not market_symbol:

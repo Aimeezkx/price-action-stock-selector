@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     ibkr_market_data_type: int = 3
     ibkr_request_delay_seconds: float = 0.35
 
+    market_sync_enabled: bool = True
+    market_sync_timezone: str = "America/Chicago"
+    market_sync_hour: int = 15
+    market_sync_minute: int = 0
+    market_bar_retention: int = 300
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property

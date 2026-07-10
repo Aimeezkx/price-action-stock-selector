@@ -15,6 +15,8 @@
 - 固定持仓天数 + 固定 R 目标 + 结构止损的事件式基础回测
 - 课程资料页码引用与规则 DSL：见 [`knowledge/`](knowledge)
 - 5 个本地 PDF 资料源目录（7,226 页），包含趋势、区间与反转上下册；原文件不上传仓库
+- S&P 500 自由流通市值权重前 300 股票池，来自 State Street SPY 官方每日持仓
+- 工作日 `15:00 America/Chicago` 自动同步 IBKR 日线，每只股票只保留最近 300 个交易日
 - SQLite 零配置启动；PostgreSQL + Redis/RQ Docker 运行
 
 ## 快速启动
@@ -78,6 +80,11 @@ IBKR_CLIENT_ID=17
 IBKR_READONLY=true
 IBKR_MARKET_DATA_TYPE=3
 IBKR_REQUEST_DELAY_SECONDS=0.35
+MARKET_SYNC_ENABLED=true
+MARKET_SYNC_TIMEZONE=America/Chicago
+MARKET_SYNC_HOUR=15
+MARKET_SYNC_MINUTE=0
+MARKET_BAR_RETENTION=300
 ```
 
 `IBKR_MARKET_DATA_TYPE=3` 表示延迟数据。是否能取得数据取决于账户权限和市场数据订阅。批量同步会逐 ticker 串行执行，并在请求后节流；历史数据保存在本地，避免重复请求。
@@ -86,12 +93,33 @@ IBKR_REQUEST_DELAY_SECONDS=0.35
 
 macOS Docker 用户需要让 TWS 接受来自 Docker 虚拟机的连接；Compose 已把 `IBKR_HOST` 设置为 `host.docker.internal`。
 
+## S&P 500 Top 300 与自动更新
+
+项目启动时会把 `backend/app/data/sp500_top300.json` 中的 300 个证券加入 `S&P 500 Top 300` watchlist。快照来自 State Street 官方 SPY 每日持仓，按指数权重降序截取；S&P 500 使用自由流通市值加权，因此该权重可作为用户所要求的市值排序口径。当前快照日期为 2026-07-09。
+
+刷新股票池快照：
+
+```bash
+cd backend
+.venv/bin/python scripts/update_sp500_universe.py
+```
+
+自动同步规则：
+
+- 工作日 15:00（默认 `America/Chicago`）启动；
+- 新标的或不足 300 根时请求 2 年日线，随后裁剪到最近 300 个交易日；
+- 已完成回填的标的只请求最近 10 天并幂等更新；
+- 同步保持串行并沿用 IBKR pacing delay；TWS / IB Gateway 必须在计划时间保持登录；
+- `GET /api/market/data/sync-status` 可查看进度、失败数和下一次运行时间；
+- `POST /api/market/data/sync-scheduled` 可手动触发同一后台任务。
+
 ## API
 
 | 模块 | Endpoint |
 |---|---|
 | IBKR | `GET /api/market/ibkr/status`, `POST /api/market/ibkr/connect` |
 | 标的/数据 | `POST/GET /api/market/symbols`, `POST /api/market/data/sync-daily`, `GET /api/market/data/daily/{symbol}` |
+| 股票池/调度 | `GET /api/market/universe/sp500-top300`, `GET /api/market/data/sync-status`, `POST /api/market/data/sync-scheduled` |
 | 扫描 | `POST /api/scanner/jobs`, `GET /api/scanner/jobs/{id}`, `GET /api/scanner/results`, `GET /api/scanner/results/{id}` |
 | 规则 | `GET /api/price-action/rules`, `PATCH /api/price-action/rules/{id}`, `POST /api/price-action/rules/{id}/test` |
 | 资料源 | `GET /api/knowledge/sources` |
@@ -111,7 +139,7 @@ curl -X POST http://localhost:8000/api/scanner/jobs \
 cd backend
 alembic upgrade head
 pytest
-ruff check app tests
+ruff check app tests migrations scripts
 
 cd ../frontend
 npm run build

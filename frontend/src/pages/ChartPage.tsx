@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { ArrowDown, ArrowUp, ShieldAlert, Target } from 'lucide-react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { KlineChart } from '../components/KlineChart'
 import { ErrorState, Loading, ScoreBadge } from '../components/StateViews'
@@ -8,20 +8,22 @@ import type { DailyBar, ScanResult, SymbolItem } from '../types'
 
 export function ChartPage() {
   const { symbol = 'AAPL' } = useParams()
+  const navigate = useNavigate()
   const [search] = useSearchParams()
   const resultId = search.get('result')
   const chart = useQuery({ queryKey: ['bars', symbol], queryFn: () => api.get<{ symbol: SymbolItem; bars: DailyBar[] }>(`/api/market/data/daily/${symbol}`) })
+  const symbols = useQuery({ queryKey: ['symbols'], queryFn: () => api.get<SymbolItem[]>('/api/market/symbols') })
   const result = useQuery({ queryKey: ['result', resultId], queryFn: () => api.get<ScanResult>(`/api/scanner/results/${resultId}`), enabled: Boolean(resultId) })
   const fallback = useQuery({ queryKey: ['symbol-results', symbol], queryFn: () => api.get<ScanResult[]>(`/api/scanner/results?symbol=${symbol}&min_score=0`), enabled: !resultId })
-  if (chart.isLoading || result.isLoading || fallback.isLoading) return <Loading label={`正在绘制 ${symbol} 日线…`} />
-  if (chart.error || result.error || fallback.error) return <ErrorState error={(chart.error ?? result.error ?? fallback.error) as Error} />
+  if (chart.isLoading || symbols.isLoading || result.isLoading || fallback.isLoading) return <Loading label={`正在绘制 ${symbol} 日线…`} />
+  if (chart.error || symbols.error || result.error || fallback.error) return <ErrorState error={(chart.error ?? symbols.error ?? result.error ?? fallback.error) as Error} />
   const signal = result.data ?? fallback.data?.[0]
   const bars = chart.data!.bars
   const current = bars.at(-1)
   const previous = bars.at(-2)
   const change = current && previous ? ((current.close / previous.close) - 1) * 100 : 0
   return <div className="page-stack">
-    <div className="page-heading compact"><div><span className="eyebrow">DAILY STRUCTURE</span><h1>{symbol} <span className="company-name">{chart.data!.symbol.name}</span></h1><p>{current?.close.toFixed(2)} <span className={change >= 0 ? 'positive' : 'negative'}>{change >= 0 ? '+' : ''}{change.toFixed(2)}%</span> · {current?.bar_date} · {current?.source}</p></div><div className="symbol-switcher">{['AAPL', 'MSFT', 'NVDA', 'META'].map((item) => <Link key={item} className={item === symbol ? 'active' : ''} to={`/chart/${item}`}>{item}</Link>)}</div></div>
+    <div className="page-heading compact"><div><span className="eyebrow">DAILY STRUCTURE</span><h1>{symbol} <span className="company-name">{chart.data!.symbol.name}</span></h1><p>{current?.close.toFixed(2)} <span className={change >= 0 ? 'positive' : 'negative'}>{change >= 0 ? '+' : ''}{change.toFixed(2)}%</span> · {current?.bar_date} · {current?.source} · {bars.length}/300 日</p></div><label className="symbol-picker"><span>股票池</span><select value={symbol} onChange={(event) => navigate(`/chart/${event.target.value}`)}>{symbols.data!.map((item) => <option key={item.symbol} value={item.symbol}>{item.symbol} · {item.name}</option>)}</select></label></div>
     <section className="chart-layout"><div className="panel chart-panel"><KlineChart bars={bars} annotations={signal?.annotations} entry={signal?.direction === 'long' ? signal.entry : undefined} stop={signal?.direction === 'long' ? signal.stop : undefined} target={signal?.direction === 'long' ? signal.target : undefined} /></div>
       <aside className="signal-panel">{signal ? <>
         <div className="signal-head"><div><span className="eyebrow">MATCHED RULE</span><h2>{signal.rule_name}</h2></div><ScoreBadge score={signal.score} /></div>

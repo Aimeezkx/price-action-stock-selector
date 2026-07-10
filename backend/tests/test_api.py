@@ -1,5 +1,5 @@
 import os
-from datetime import date
+from datetime import date, timedelta
 
 os.environ["DATABASE_URL"] = "sqlite:///./test_price_action.db"
 os.environ["SEED_DEMO_DATA"] = "true"
@@ -23,7 +23,14 @@ def test_mvp_flow() -> None:
         assert sum(source["pages"] for source in sources) == 7226
         assert all(source["redistributed"] is False for source in sources)
         symbols = client.get("/api/market/symbols").json()
-        assert len(symbols) >= 6
+        assert len(symbols) >= 300
+        universe = client.get("/api/market/universe/sp500-top300").json()
+        assert universe["count"] == 300
+        assert universe["registered_count"] == 300
+        assert universe["symbols"][0]["symbol"] == "NVDA"
+        sync_status = client.get("/api/market/data/sync-status").json()
+        assert sync_status["daily_time"] == "15:00"
+        assert sync_status["retention_trading_days"] == 300
         job = client.post(
             "/api/scanner/jobs", json={"symbols": [], "rule_ids": [], "min_score": 50}
         )
@@ -119,23 +126,17 @@ def test_real_sync_replaces_demo_series(monkeypatch) -> None:
         db.commit()
 
     async def fake_fetch(*_args, **_kwargs):
+        start = date(2025, 1, 1)
         return 12345, [
             {
-                "date": date(2026, 1, 2),
-                "open": 20,
-                "high": 22,
-                "low": 19,
-                "close": 21,
-                "volume": 1_000,
-            },
-            {
-                "date": date(2026, 1, 5),
-                "open": 21,
-                "high": 23,
-                "low": 20,
-                "close": 22,
-                "volume": 1_100,
-            },
+                "date": start + timedelta(days=index),
+                "open": 20 + index,
+                "high": 22 + index,
+                "low": 19 + index,
+                "close": 21 + index,
+                "volume": 1_000 + index,
+            }
+            for index in range(305)
         ]
 
     monkeypatch.setattr(ibkr_service, "fetch_daily_bars", fake_fetch)
@@ -147,7 +148,10 @@ def test_real_sync_replaces_demo_series(monkeypatch) -> None:
         assert response.status_code == 200
         result = response.json()["results"][0]
         assert result["removed_demo"] == 2
-        assert result["inserted"] == 2
+        assert result["inserted"] == 305
+        assert result["pruned"] == 5
+        assert result["retained"] == 300
         bars = client.get(f"/api/market/data/daily/{ticker}").json()["bars"]
-        assert [bar["bar_date"] for bar in bars] == ["2026-01-02", "2026-01-05"]
+        assert len(bars) == 300
+        assert bars[0]["bar_date"] == "2025-01-06"
         assert {bar["source"] for bar in bars} == {"IBKR"}

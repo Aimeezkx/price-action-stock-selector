@@ -12,6 +12,7 @@ export function ScannerPage() {
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>([])
   const [selectedRules, setSelectedRules] = useState<string[]>([])
   const [minScore, setMinScore] = useState(60)
+  const [symbolSearch, setSymbolSearch] = useState('')
   const [activeJobId, setActiveJobId] = useState<number | null>(null)
   const symbols = useQuery({ queryKey: ['symbols'], queryFn: () => api.get<SymbolItem[]>('/api/market/symbols') })
   const rules = useQuery({ queryKey: ['rules'], queryFn: () => api.get<Rule[]>('/api/price-action/rules') })
@@ -28,6 +29,7 @@ export function ScannerPage() {
     onSuccess: (job) => setActiveJobId(job.id),
   })
   const visible = useMemo(() => (results.data ?? []).filter((item) => item.score >= minScore), [results.data, minScore])
+  const filteredSymbols = useMemo(() => (symbols.data ?? []).filter((item) => `${item.symbol} ${item.name}`.toLowerCase().includes(symbolSearch.toLowerCase())), [symbols.data, symbolSearch])
   if (symbols.isLoading || rules.isLoading || results.isLoading) return <Loading label="正在加载扫描器…" />
   if (symbols.error || rules.error || results.error) return <ErrorState error={(symbols.error ?? rules.error ?? results.error) as Error} />
   const toggle = (value: string, selected: string[], setSelected: (items: string[]) => void) => setSelected(selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value])
@@ -37,7 +39,7 @@ export function ScannerPage() {
       <aside className="filter-panel">
         <div className="filter-title"><Filter size={17} /><strong>扫描条件</strong><button className="icon-button" onClick={() => { setSelectedSymbols([]); setSelectedRules([]); setMinScore(60) }}><RotateCcw size={15} /></button></div>
         <label className="field-label">最低评分 <strong>{minScore}</strong></label><input className="range" type="range" min="40" max="90" step="5" value={minScore} onChange={(event) => setMinScore(Number(event.target.value))} />
-        <fieldset><legend>股票池</legend><div className="check-list">{symbols.data!.map((item) => <label key={item.symbol}><input type="checkbox" checked={selectedSymbols.includes(item.symbol)} onChange={() => toggle(item.symbol, selectedSymbols, setSelectedSymbols)} /><span><strong>{item.symbol}</strong><small>{item.sector ?? item.name}</small></span></label>)}</div></fieldset>
+        <fieldset><legend>股票池 · {symbols.data!.length}</legend><input className="symbol-search" value={symbolSearch} onChange={(event) => setSymbolSearch(event.target.value)} placeholder="搜索 ticker / 公司" /><div className="check-list">{filteredSymbols.map((item) => <label key={item.symbol}><input type="checkbox" checked={selectedSymbols.includes(item.symbol)} onChange={() => toggle(item.symbol, selectedSymbols, setSelectedSymbols)} /><span><strong>{item.symbol}</strong><small>{item.sector ?? item.name}</small></span></label>)}</div></fieldset>
         <fieldset><legend>规则</legend><div className="check-list">{rules.data!.filter((item) => item.enabled).map((item) => <label key={item.id}><input type="checkbox" checked={selectedRules.includes(item.id)} onChange={() => toggle(item.id, selectedRules, setSelectedRules)} /><span><strong>{item.name}</strong><small>{item.category}</small></span></label>)}</div></fieldset>
       </aside>
       <section className="panel results-panel"><div className="section-heading"><div><span className="eyebrow">{scan.data ? `JOB #${scan.data.id} · ${scan.data.status}` : 'LATEST RESULTS'}</span><h2>{visible.length} 个候选</h2></div><span className="muted">Score ≥ {minScore}</span></div>{scan.error && <p className="inline-error">{scan.error.message}</p>}<ResultTable results={visible} /></section>

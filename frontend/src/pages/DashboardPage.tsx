@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Activity, BookOpenCheck, Cable, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react'
+import { Activity, BookOpenCheck, Cable, Clock3, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { ErrorState, Loading } from '../components/StateViews'
@@ -26,9 +26,12 @@ export function DashboardPage() {
     </section>
     <section className="panel"><div className="section-heading"><div><span className="eyebrow">RANKED SETUPS</span><h2>当前最高质量候选</h2></div><Link className="text-link" to="/scanner">查看全部 →</Link></div><ResultTable results={data.top_results} /></section>
     <section className="connection-strip"><span className={data.ibkr.connected ? 'connection-icon online' : 'connection-icon'}><Cable size={18} /></span><div><strong>IBKR {data.ibkr.connected ? '在线' : '离线'}</strong><p>{data.ibkr.message} · {data.ibkr.host}:{data.ibkr.port} · Market data type {data.ibkr.market_data_type}</p></div></section>
+    <section className="connection-strip"><span className="connection-icon online"><Clock3 size={18} /></span><div><strong>日线自动更新 · {data.sync.daily_time} {data.sync.timezone}</strong><p>工作日运行 · 每只股票保留最近 {data.sync.retention_trading_days} 个交易日 · {data.sync.running ? `同步中 ${data.sync.processed}/${data.sync.total}` : `下次 ${formatNextRun(data.sync.next_run_at)}`}</p></div></section>
   </div>
 }
 
 function Metric({ icon, label, value, hint }: { icon: React.ReactNode; label: string; value: number; hint: string }) {
   return <article className="metric-card"><div className="metric-icon">{icon}</div><div><span>{label}</span><strong>{value}</strong><small>{hint}</small></div></article>
 }
+
+function formatNextRun(value: string | null) { return value ? new Date(value).toLocaleString('zh-CN') : '等待调度器启动' }

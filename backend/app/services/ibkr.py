@@ -82,7 +82,7 @@ class IBKRService:
             status = await self.connect()
             if not status.connected:
                 raise ConnectionError(status.message)
-            contract = Stock(symbol.upper(), "SMART", "USD")
+            contract = Stock(symbol.upper().replace(".", " "), "SMART", "USD")
             qualified = await self.ib.qualifyContractsAsync(contract)
             if not qualified:
                 raise ValueError(f"IBKR 无法解析合约 {symbol}")
