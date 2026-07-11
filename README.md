@@ -170,6 +170,30 @@ IBKR_PORT=7496 IBKR_CLIENT_ID=191 IBKR_READONLY=true \
 
 GitHub Actions 会自动执行后端 lint/测试/迁移、前端构建与依赖审计，以及前后端容器镜像构建。
 
+## macOS 后台常驻
+
+`infrastructure/macos/com.aimeezkx.price-action-backend.plist` 可将后端注册为用户级 LaunchAgent。服务会在登录后启动并在异常退出时自动重启；网页和终端无需保持打开。配置仍从本地 `backend/.env` 读取。
+
+```bash
+launchctl bootstrap gui/$(id -u) infrastructure/macos/com.aimeezkx.price-action-backend.plist
+launchctl kickstart -k gui/$(id -u)/com.aimeezkx.price-action-backend
+```
+
+状态和日志：
+
+```bash
+launchctl print gui/$(id -u)/com.aimeezkx.price-action-backend
+tail -f backend/launchd.stderr.log
+```
+
+卸载：
+
+```bash
+launchctl bootout gui/$(id -u)/com.aimeezkx.price-action-backend
+```
+
+LaunchAgent 不能阻止 Mac 睡眠；15:00 行情同步要求 TWS 已登录且电脑处于唤醒状态。
+
 ## 工程结构
 
 ```text
