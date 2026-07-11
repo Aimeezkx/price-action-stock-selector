@@ -20,7 +20,7 @@ class EmailDigestService:
             self.settings.email_smtp_host
             and self.settings.email_smtp_username
             and self.settings.email_smtp_password
-            and self.settings.email_digest_recipient
+            and self.settings.email_digest_recipients
         )
 
     def send(self, results: list[ScanResult]) -> None:
@@ -46,7 +46,7 @@ class EmailDigestService:
         message = EmailMessage()
         sender = self.settings.email_smtp_from or self.settings.email_smtp_username
         message["From"] = sender
-        message["To"] = self.settings.email_digest_recipient
+        message["To"] = ", ".join(self.settings.email_digest_recipients)
         message["Subject"] = f"[PA Selector] {date.today().isoformat()} 前20候选"
         text_rows = [
             "排名 | Ticker | Score | 市值排名 | 规则 | Entry | Stop | Target | R/R",

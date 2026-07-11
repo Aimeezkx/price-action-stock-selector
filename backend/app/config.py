@@ -42,6 +42,14 @@ class Settings(BaseSettings):
     def allowed_origins(self) -> list[str]:
         return [item.strip() for item in self.cors_origins.split(",") if item.strip()]
 
+    @property
+    def email_digest_recipients(self) -> list[str]:
+        return [
+            item.strip()
+            for item in self.email_digest_recipient.split(",")
+            if item.strip()
+        ]
+
 
 @lru_cache
 def get_settings() -> Settings:

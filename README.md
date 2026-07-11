@@ -91,7 +91,7 @@ MARKET_BAR_RETENTION=300
 EMAIL_DIGEST_ENABLED=true
 EMAIL_DIGEST_HOUR=15
 EMAIL_DIGEST_MINUTE=30
-EMAIL_DIGEST_RECIPIENT=zkxaimee0914@gmail.com
+EMAIL_DIGEST_RECIPIENT=zkxaimee0914@gmail.com,foreveraming@gmail.com
 EMAIL_SMTP_USERNAME=your-account@gmail.com
 EMAIL_SMTP_PASSWORD=your-gmail-app-password
 ```
@@ -102,7 +102,7 @@ EMAIL_SMTP_PASSWORD=your-gmail-app-password
 
 macOS Docker 用户需要让 TWS 接受来自 Docker 虚拟机的连接；Compose 已把 `IBKR_HOST` 设置为 `host.docker.internal`。
 
-邮件调度只在 `EMAIL_DIGEST_ENABLED=true` 且 Gmail SMTP 用户名和应用专用密码都已配置时运行。不要提交 `.env`；应用专用密码应仅保存在本机或部署平台的 Secret 中。状态和手动触发接口分别为 `GET /api/notifications/email/status` 与 `POST /api/notifications/email/send-digest`。
+多个收件人使用逗号分隔，例如 `EMAIL_DIGEST_RECIPIENT=zkxaimee0914@gmail.com,foreveraming@gmail.com`。邮件调度只在 `EMAIL_DIGEST_ENABLED=true` 且 Gmail SMTP 用户名和应用专用密码都已配置时运行。不要提交 `.env`；应用专用密码应仅保存在本机或部署平台的 Secret 中。状态和手动触发接口分别为 `GET /api/notifications/email/status` 与 `POST /api/notifications/email/send-digest`。
 
 ## S&P 500 Top 300 与自动更新
 

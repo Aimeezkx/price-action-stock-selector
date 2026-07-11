@@ -113,6 +113,7 @@ export interface DigestStatus {
   timezone: string
   daily_time: string
   recipient: string
+  recipients: string[]
   next_run_at: string | null
   last_started_at: string | null
   last_finished_at: string | null

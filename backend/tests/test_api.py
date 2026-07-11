@@ -9,6 +9,7 @@ os.environ["SEED_DEMO_DATA"] = "true"
 os.environ["EMAIL_DIGEST_ENABLED"] = "false"
 os.environ["EMAIL_SMTP_USERNAME"] = ""
 os.environ["EMAIL_SMTP_PASSWORD"] = ""
+os.environ["EMAIL_DIGEST_RECIPIENT"] = "zkxaimee0914@gmail.com"
 
 from fastapi.testclient import TestClient
 from sqlalchemy import delete, select
