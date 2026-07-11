@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import suppress
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
@@ -15,11 +15,75 @@ from .ibkr import ibkr_service
 from .market_data import sync_symbol_daily
 
 
+def _observed(day: date) -> date:
+    if day.weekday() == 5:
+        return day - timedelta(days=1)
+    if day.weekday() == 6:
+        return day + timedelta(days=1)
+    return day
+
+
+def _nth_weekday(year: int, month: int, weekday: int, occurrence: int) -> date:
+    day = date(year, month, 1)
+    offset = (weekday - day.weekday()) % 7
+    return day + timedelta(days=offset + 7 * (occurrence - 1))
+
+
+def _last_weekday(year: int, month: int, weekday: int) -> date:
+    next_month = date(year + (month == 12), month % 12 + 1, 1)
+    day = next_month - timedelta(days=1)
+    return day - timedelta(days=(day.weekday() - weekday) % 7)
+
+
+def _easter_sunday(year: int) -> date:
+    """Gregorian computus, used to derive the NYSE Good Friday closure."""
+    a = year % 19
+    b, c = divmod(year, 100)
+    d, e = divmod(b, 4)
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i, k = divmod(c, 4)
+    ell = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * ell) // 451
+    month = (h + ell - 7 * m + 114) // 31
+    day = (h + ell - 7 * m + 114) % 31 + 1
+    return date(year, month, day)
+
+
+def us_equity_market_holidays(year: int) -> set[date]:
+    holidays = {
+        _observed(date(year, 1, 1)),
+        _nth_weekday(year, 1, 0, 3),  # Martin Luther King Jr. Day
+        _nth_weekday(year, 2, 0, 3),  # Washington's Birthday
+        _easter_sunday(year) - timedelta(days=2),
+        _last_weekday(year, 5, 0),  # Memorial Day
+        _observed(date(year, 7, 4)),
+        _nth_weekday(year, 9, 0, 1),  # Labor Day
+        _nth_weekday(year, 11, 3, 4),  # Thanksgiving
+        _observed(date(year, 12, 25)),
+    }
+    if year >= 2022:
+        holidays.add(_observed(date(year, 6, 19)))
+    return holidays
+
+
+def is_us_equity_trading_day(day: date) -> bool:
+    if day.weekday() >= 5:
+        return False
+    holidays = set().union(
+        us_equity_market_holidays(day.year - 1),
+        us_equity_market_holidays(day.year),
+        us_equity_market_holidays(day.year + 1),
+    )
+    return day not in holidays
+
+
 def next_sync_time(now: datetime, hour: int = 15, minute: int = 0) -> datetime:
     candidate = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
     if candidate <= now:
         candidate += timedelta(days=1)
-    while candidate.weekday() >= 5:
+    while not is_us_equity_trading_day(candidate.date()):
         candidate += timedelta(days=1)
     return candidate
 
@@ -123,6 +187,7 @@ class DailyMarketScheduler:
             "timezone": self.settings.market_sync_timezone,
             "daily_time": f"{self.settings.market_sync_hour:02d}:{self.settings.market_sync_minute:02d}",
             "weekdays_only": True,
+            "trading_days_only": True,
             "retention_trading_days": self.settings.market_bar_retention,
             "next_run_at": self.next_run_at.isoformat() if self.next_run_at else None,
             "last_started_at": self.last_started_at.isoformat() if self.last_started_at else None,

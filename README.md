@@ -18,8 +18,8 @@
 - 全部本地资料的 PDF/印刷页码引用与规则 DSL：见 [`knowledge/`](knowledge)
 - 5 个本地 PDF 资料源目录（7,226 页），包含趋势、区间与反转上下册；原文件不上传仓库
 - S&P 500 自由流通市值权重前 300 股票池，来自 State Street SPY 官方每日持仓
-- 工作日 `15:00 America/Chicago` 自动同步 IBKR 日线，每只股票只保留最近 300 个交易日
-- 可选的工作日 `15:30 America/Chicago` 前 20 候选 Gmail 邮件（默认关闭，凭据只从环境变量读取）
+- 美股交易日 `15:00 America/Chicago` 自动同步 IBKR 日线，自动跳过周末和 NYSE 休市日，每只股票只保留最近 300 个交易日
+- 可选的美股交易日 `15:30 America/Chicago` 前 20 候选 Gmail 邮件（默认关闭，凭据只从环境变量读取）
 - SQLite 零配置启动；PostgreSQL + Redis/RQ Docker 运行
 
 ## 快速启动
@@ -117,7 +117,7 @@ cd backend
 
 自动同步规则：
 
-- 工作日 15:00（默认 `America/Chicago`）启动；
+- 美股实际交易日 15:00（默认 `America/Chicago`）启动，自动跳过周末、Good Friday、Thanksgiving 等 NYSE 休市日；
 - 新标的或不足 300 根时请求 2 年日线，随后裁剪到最近 300 个交易日；
 - 已完成回填的标的只请求最近 10 天并幂等更新；
 - 同步保持串行并沿用 IBKR pacing delay；TWS / IB Gateway 必须在计划时间保持登录；

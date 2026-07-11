@@ -104,6 +104,7 @@ class DailyDigestScheduler:
             "running": bool(self._run_task and not self._run_task.done()),
             "timezone": self.settings.market_sync_timezone,
             "daily_time": f"{self.settings.email_digest_hour:02d}:{self.settings.email_digest_minute:02d}",
+            "trading_days_only": True,
             "recipient": ", ".join(self.settings.email_digest_recipients),
             "recipients": self.settings.email_digest_recipients,
             "next_run_at": self.next_run_at.isoformat() if self.next_run_at else None,

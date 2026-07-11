@@ -112,6 +112,7 @@ export interface DigestStatus {
   running: boolean
   timezone: string
   daily_time: string
+  trading_days_only: boolean
   recipient: string
   recipients: string[]
   next_run_at: string | null
@@ -128,6 +129,7 @@ export interface SyncStatus {
   timezone: string
   daily_time: string
   weekdays_only: boolean
+  trading_days_only: boolean
   retention_trading_days: number
   next_run_at: string | null
   last_started_at: string | null
