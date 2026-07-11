@@ -138,6 +138,8 @@ tbody tr:hover { background: #102136; }
 .field-label { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: 17px; }
 .field-label strong { color: var(--green); }
 .filter-help { margin: 7px 0 0; color: #60758b; font-size: 9px; line-height: 1.5; }
+.fieldset-actions { display: flex; align-items: center; justify-content: space-between; margin: 0 0 8px; color: #60758b; font-size: 9px; }
+.fieldset-actions button { border: 0; padding: 3px 0; color: var(--green); background: transparent; font: inherit; font-weight: 800; cursor: pointer; }
 .range { width: 100%; accent-color: var(--green); margin: 7px 0 13px; }
 fieldset { border: 0; padding: 12px 0 0; margin: 0; }
 legend { color: #71859b; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 7px; }
