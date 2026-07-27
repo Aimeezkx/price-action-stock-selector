@@ -172,10 +172,13 @@ GitHub Actions 会自动执行后端 lint/测试/迁移、前端构建与依赖�
 
 ## macOS 后台常驻
 
-`infrastructure/macos/com.aimeezkx.price-action-backend.plist` 可将后端注册为用户级 LaunchAgent。服务会在登录后启动并在异常退出时自动重启；网页和终端无需保持打开。配置仍从本地 `backend/.env` 读取。
+`infrastructure/macos/com.aimeezkx.price-action-backend.plist` 可将后端注册为用户级 LaunchAgent。服务会在登录后启动并在异常退出时自动重启；网页和终端无需保持打开。配置仍从本地 `backend/.env` 读取。为确保 macOS 重启或重新登录后仍会自动加载，先将 plist 复制到用户的标准 LaunchAgents 目录。
 
 ```bash
-launchctl bootstrap gui/$(id -u) infrastructure/macos/com.aimeezkx.price-action-backend.plist
+mkdir -p "$HOME/Library/LaunchAgents"
+cp infrastructure/macos/com.aimeezkx.price-action-backend.plist \
+  "$HOME/Library/LaunchAgents/com.aimeezkx.price-action-backend.plist"
+launchctl load -w "$HOME/Library/LaunchAgents/com.aimeezkx.price-action-backend.plist"
 launchctl kickstart -k gui/$(id -u)/com.aimeezkx.price-action-backend
 ```
 
@@ -192,7 +195,7 @@ tail -f backend/launchd.stderr.log
 launchctl bootout gui/$(id -u)/com.aimeezkx.price-action-backend
 ```
 
-LaunchAgent 不能阻止 Mac 睡眠；15:00 行情同步要求 TWS 已登录且电脑处于唤醒状态。
+LaunchAgent 不能阻止 Mac 睡眠；15:00 行情同步和 15:30 邮件摘要要求 IB Gateway/TWS 已登录、API 端口已打开且电脑处于唤醒状态。使用 Live IB Gateway 时，在 `backend/.env` 设置 `IBKR_PORT=4001`；Live TWS 默认使用 `7496`。
 
 ## 工程结构
 
